@@ -1,0 +1,243 @@
+import React from "react";
+import { useForm, Controller } from "react-hook-form";
+import clsx from "clsx";
+import { FormField } from "../../types";
+import Button from "./Button";
+import Icon from "./Icon";
+
+interface FormProps {
+  fields: FormField[];
+  onSubmit: (data: any) => void;
+  defaultValues?: any;
+  loading?: boolean;
+  submitLabel?: string;
+  cancelLabel?: string;
+  onCancel?: () => void;
+  className?: string;
+  showCancelButton?: boolean;
+}
+
+const Form: React.FC<FormProps> = ({
+  fields,
+  onSubmit,
+  defaultValues = {},
+  loading = false,
+  submitLabel = "Save",
+  cancelLabel = "Cancel",
+  onCancel,
+  className,
+  showCancelButton = true,
+}) => {
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    watch,
+    setValue,
+  } = useForm({
+    defaultValues,
+  });
+
+  const renderField = (field: FormField) => {
+    const hasError = errors[field.name];
+    const baseInputClasses = clsx(
+      "block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm",
+      hasError && "border-red-300 focus:border-red-500 focus:ring-red-500",
+      field.disabled && "bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+    );
+
+    switch (field.type) {
+      case "textarea":
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={field.validation}
+            render={({ field: { onChange, value, ...fieldProps } }) => (
+              <textarea
+                {...fieldProps}
+                value={value || ""}
+                onChange={onChange}
+                placeholder={field.placeholder}
+                rows={field.rows || 3}
+                disabled={field.disabled}
+                className={baseInputClasses}
+              />
+            )}
+          />
+        );
+
+      case "select":
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={field.validation}
+            render={({ field: { onChange, value, ...fieldProps } }) => (
+              <select
+                {...fieldProps}
+                value={value || ""}
+                onChange={onChange}
+                disabled={field.disabled}
+                multiple={field.multiple}
+                className={baseInputClasses}
+              >
+                <option value="">Select {field.label}</option>
+                {field.options?.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+        );
+
+      case "checkbox":
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={field.validation}
+            render={({ field: { onChange, value, ...fieldProps } }) => (
+              <div className="flex items-center">
+                <input
+                  {...fieldProps}
+                  type="checkbox"
+                  checked={value || false}
+                  onChange={(e) => onChange(e.target.checked)}
+                  disabled={field.disabled}
+                  className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                  {field.label}
+                </label>
+              </div>
+            )}
+          />
+        );
+
+      case "file":
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={field.validation}
+            render={({ field: { onChange, value, ...fieldProps } }) => (
+              <input
+                {...fieldProps}
+                type="file"
+                multiple={field.multiple}
+                accept={field.accept}
+                disabled={field.disabled}
+                onChange={(e) => {
+                  const files = e.target.files;
+                  onChange(
+                    field.multiple ? Array.from(files || []) : files?.[0]
+                  );
+                }}
+                className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900 dark:file:text-primary-300"
+              />
+            )}
+          />
+        );
+
+      case "number":
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={field.validation}
+            render={({ field: { onChange, value, ...fieldProps } }) => (
+              <input
+                {...fieldProps}
+                type="number"
+                value={value || ""}
+                onChange={(e) =>
+                  onChange(e.target.valueAsNumber || e.target.value)
+                }
+                placeholder={field.placeholder}
+                min={field.min}
+                max={field.max}
+                step={field.step}
+                disabled={field.disabled}
+                className={baseInputClasses}
+              />
+            )}
+          />
+        );
+
+      default:
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={field.validation}
+            render={({ field: { onChange, value, ...fieldProps } }) => (
+              <input
+                {...fieldProps}
+                type={field.type}
+                value={value || ""}
+                onChange={onChange}
+                placeholder={field.placeholder}
+                disabled={field.disabled}
+                className={baseInputClasses}
+              />
+            )}
+          />
+        );
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className={className}>
+      <div className="space-y-6">
+        {fields.map((field) => (
+          <div key={field.name}>
+            {field.type !== "checkbox" && (
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {field.label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+            )}
+
+            {renderField(field)}
+
+            {field.description && (
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {field.description}
+              </p>
+            )}
+
+            {errors[field.name] && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                <Icon name="exclamation-triangle" size="xs" className="mr-1" />
+                {(errors[field.name] as any)?.message ||
+                  "This field is required"}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+        {showCancelButton && onCancel && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            {cancelLabel}
+          </Button>
+        )}
+
+        <Button type="submit" loading={loading} leftIcon="save">
+          {submitLabel}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+export default Form;
