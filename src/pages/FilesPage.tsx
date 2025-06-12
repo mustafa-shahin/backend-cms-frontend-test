@@ -158,28 +158,28 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
     }
   };
 
-  const handleDownload = async (file: FileEntity) => {
-    try {
-      const downloadUrl = `${
-        process.env.REACT_APP_API_URL || "http://localhost:5252/api"
-      }/file/${file.id}/download`;
+  const handleDownload = (file: FileEntity) => {
+    console.log("🔗 Using direct link download for file:", file);
 
-      // Simple approach: create invisible iframe
-      const iframe = document.createElement("iframe");
-      iframe.style.display = "none";
-      iframe.src = downloadUrl;
-      document.body.appendChild(iframe);
+    const token = localStorage.getItem("accessToken");
+    const downloadUrl = `${
+      process.env.REACT_APP_API_URL || "http://localhost:5252/api"
+    }/file/${file.id}/download?token=${encodeURIComponent(token || "")}`;
 
-      // Remove iframe after download starts
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 1000);
+    console.log("🌐 Direct download URL:", downloadUrl);
 
-      toast.success("Download started");
-    } catch (error) {
-      console.error("Error downloading file:", error);
-      toast.error("Failed to download file");
-    }
+    // Create a temporary link and click it
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = file.originalFileName;
+    link.target = "_blank";
+    link.style.display = "none";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("Download started");
   };
 
   const handleFormSubmit = async (formData: any) => {

@@ -60,9 +60,8 @@ import {
   faToggleOn,
   faToggleOff,
   faBell,
-  faList,
   faTh,
-  faStop,
+  faList,
 } from "@fortawesome/free-solid-svg-icons";
 
 export type IconName =
@@ -124,9 +123,8 @@ export type IconName =
   | "toggle-on"
   | "toggle-off"
   | "bell"
-  | "list"
   | "th"
-  | "stop";
+  | "list";
 
 const iconMap: Record<IconName, IconDefinition> = {
   home: faHome,
@@ -187,9 +185,8 @@ const iconMap: Record<IconName, IconDefinition> = {
   "toggle-on": faToggleOn,
   "toggle-off": faToggleOff,
   bell: faBell,
-  list: faList, // Add this
-  th: faTh, // Add this
-  stop: faStop, // Add this
+  th: faTh,
+  list: faList,
 };
 
 interface IconProps {
