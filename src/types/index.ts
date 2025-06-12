@@ -1,4 +1,3 @@
-// Enums
 export enum UserRole {
   Customer = 0,
   Admin = 1,
@@ -32,14 +31,121 @@ export enum FolderType {
   Temporary = 7,
 }
 
-// Base interfaces
 export interface BaseEntity {
   id: number;
   createdAt: string;
   updatedAt: string;
 }
 
-// User interfaces
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface FileEntity extends BaseEntity {
+  originalFileName: string;
+  storedFileName: string;
+  contentType: string;
+  fileSize: number;
+  fileExtension: string;
+  fileType: FileType;
+  description?: string;
+  alt?: string;
+  metadata: Record<string, any>;
+  isPublic: boolean;
+  folderId?: number;
+  folder?: Folder;
+  downloadCount: number;
+  lastAccessedAt?: string;
+  width?: number;
+  height?: number;
+  duration?: string;
+  hash?: string;
+  isProcessed: boolean;
+  processingStatus?: string;
+  tags: Record<string, any>;
+
+  // Computed properties (added by DTOs/services)
+  fileSizeFormatted?: string;
+  fileUrl?: string;
+  thumbnailUrl?: string;
+  canPreview?: boolean;
+  canEdit?: boolean;
+}
+
+export interface Address extends BaseEntity {
+  street: string;
+  street2?: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
+  region?: string;
+  district?: string;
+  isDefault: boolean;
+  addressType?: string;
+  notes?: string;
+}
+
+export interface CreateAddress {
+  street: string;
+  street2?: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
+  region?: string;
+  district?: string;
+  isDefault: boolean;
+  addressType?: string;
+  notes?: string;
+}
+
+export interface UpdateAddress extends CreateAddress {}
+
+export interface ContactDetails extends BaseEntity {
+  primaryPhone?: string;
+  secondaryPhone?: string;
+  mobile?: string;
+  fax?: string;
+  email?: string;
+  secondaryEmail?: string;
+  website?: string;
+  linkedInProfile?: string;
+  twitterProfile?: string;
+  facebookProfile?: string;
+  instagramProfile?: string;
+  whatsAppNumber?: string;
+  telegramHandle?: string;
+  additionalContacts: Record<string, any>;
+  isDefault: boolean;
+  contactType?: string;
+}
+
+export interface CreateContactDetails {
+  primaryPhone?: string;
+  secondaryPhone?: string;
+  mobile?: string;
+  fax?: string;
+  email?: string;
+  secondaryEmail?: string;
+  website?: string;
+  linkedInProfile?: string;
+  twitterProfile?: string;
+  facebookProfile?: string;
+  instagramProfile?: string;
+  whatsAppNumber?: string;
+  telegramHandle?: string;
+  additionalContacts: Record<string, any>;
+  isDefault: boolean;
+  contactType?: string;
+}
+
+export interface UpdateContactDetails extends CreateContactDetails {}
+
 export interface User extends BaseEntity {
   email: string;
   username: string;
@@ -89,117 +195,6 @@ export interface UpdateUser {
   contactDetails: UpdateContactDetails[];
 }
 
-// Address interfaces
-export interface Address extends BaseEntity {
-  street: string;
-  street2?: string;
-  city: string;
-  state: string;
-  country: string;
-  postalCode: string;
-  region?: string;
-  district?: string;
-  isDefault: boolean;
-  addressType?: string;
-  notes?: string;
-}
-
-export interface CreateAddress {
-  street: string;
-  street2?: string;
-  city: string;
-  state: string;
-  country: string;
-  postalCode: string;
-  region?: string;
-  district?: string;
-  isDefault: boolean;
-  addressType?: string;
-  notes?: string;
-}
-
-export interface UpdateAddress extends CreateAddress {}
-
-// Contact Details interfaces
-export interface ContactDetails extends BaseEntity {
-  primaryPhone?: string;
-  secondaryPhone?: string;
-  mobile?: string;
-  fax?: string;
-  email?: string;
-  secondaryEmail?: string;
-  website?: string;
-  linkedInProfile?: string;
-  twitterProfile?: string;
-  facebookProfile?: string;
-  instagramProfile?: string;
-  whatsAppNumber?: string;
-  telegramHandle?: string;
-  additionalContacts: Record<string, any>;
-  isDefault: boolean;
-  contactType?: string;
-}
-
-export interface CreateContactDetails {
-  primaryPhone?: string;
-  secondaryPhone?: string;
-  mobile?: string;
-  fax?: string;
-  email?: string;
-  secondaryEmail?: string;
-  website?: string;
-  linkedInProfile?: string;
-  twitterProfile?: string;
-  facebookProfile?: string;
-  instagramProfile?: string;
-  whatsAppNumber?: string;
-  telegramHandle?: string;
-  additionalContacts: Record<string, any>;
-  isDefault: boolean;
-  contactType?: string;
-}
-
-export interface UpdateContactDetails extends CreateContactDetails {}
-
-// Page interfaces
-export interface Page extends BaseEntity {
-  name: string;
-  title: string;
-  slug: string;
-  description?: string;
-  metaTitle?: string;
-  metaDescription?: string;
-  metaKeywords?: string;
-  status: PageStatus;
-  template?: string;
-  priority?: number;
-  parentPageId?: number;
-  requiresLogin: boolean;
-  adminOnly: boolean;
-  publishedOn?: string;
-  publishedBy?: string;
-  childPages: Page[];
-}
-
-export interface CreatePage {
-  name: string;
-  title: string;
-  slug: string;
-  description?: string;
-  metaTitle?: string;
-  metaDescription?: string;
-  metaKeywords?: string;
-  status: PageStatus;
-  template?: string;
-  priority?: number;
-  parentPageId?: number;
-  requiresLogin: boolean;
-  adminOnly: boolean;
-}
-
-export interface UpdatePage extends CreatePage {}
-
-// Company interfaces
 export interface Company extends BaseEntity {
   name: string;
   description?: string;
@@ -230,7 +225,6 @@ export interface UpdateCompany {
   contactDetails: UpdateContactDetails[];
 }
 
-// Location interfaces
 export interface LocationOpeningHour extends BaseEntity {
   dayOfWeek: number;
   openTime: string;
@@ -279,46 +273,6 @@ export interface CreateLocationOpeningHour {
 
 export interface UpdateLocation extends CreateLocation {}
 
-// File interfaces
-export interface FileEntity extends BaseEntity {
-  originalFileName: string;
-  storedFileName: string;
-  filePath: string;
-  contentType: string;
-  fileSize: number;
-  fileExtension: string;
-  fileType: FileType;
-  description?: string;
-  alt?: string;
-  metadata: Record<string, any>;
-  isPublic: boolean;
-  folderId?: number;
-  folderPath?: string;
-  downloadCount: number;
-  lastAccessedAt?: string;
-  thumbnailPath?: string;
-  width?: number;
-  height?: number;
-  duration?: string;
-  isProcessed: boolean;
-  processingStatus?: string;
-  tags: Record<string, any>;
-  fileSizeFormatted: string;
-  fileUrl: string;
-  thumbnailUrl?: string;
-  canPreview: boolean;
-  canEdit: boolean;
-}
-
-export interface UpdateFile {
-  description?: string;
-  alt?: string;
-  isPublic: boolean;
-  tags: Record<string, any>;
-  folderId?: number;
-}
-
-// Folder interfaces
 export interface Folder extends BaseEntity {
   name: string;
   description?: string;
@@ -336,58 +290,25 @@ export interface Folder extends BaseEntity {
   totalSizeFormatted: string;
 }
 
-export interface CreateFolder {
+export interface Page extends BaseEntity {
   name: string;
+  title: string;
+  slug: string;
   description?: string;
-  parentFolderId?: number;
-  isPublic: boolean;
-  folderType: FolderType;
-  metadata: Record<string, any>;
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
+  status: PageStatus;
+  template?: string;
+  priority?: number;
+  parentPageId?: number;
+  requiresLogin: boolean;
+  adminOnly: boolean;
+  publishedOn?: string;
+  publishedBy?: string;
+  childPages: Page[];
 }
 
-export interface UpdateFolder {
-  name: string;
-  description?: string;
-  isPublic: boolean;
-  metadata: Record<string, any>;
-}
-
-// Job interfaces
-export interface IndexingJob extends BaseEntity {
-  jobType: string;
-  status: string;
-  startedAt: string;
-  completedAt?: string;
-  totalEntities: number;
-  processedEntities: number;
-  failedEntities: number;
-  errorMessage?: string;
-  duration?: string;
-  progressPercentage: number;
-}
-
-export interface TriggerJobResponse {
-  jobId: string;
-  message: string;
-  jobType: string;
-}
-
-// API Response interfaces
-export interface ApiResponse<T> {
-  data: T;
-  success: boolean;
-  message?: string;
-}
-
-export interface PaginatedResponse<T> {
-  items: T[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-// Auth interfaces
 export interface LoginRequest {
   email: string;
   password: string;
@@ -410,7 +331,6 @@ export interface RegisterRequest {
   lastName: string;
 }
 
-// Navigation interfaces
 export interface NavigationItem {
   name: string;
   href: string;
@@ -419,7 +339,6 @@ export interface NavigationItem {
   children?: NavigationItem[];
 }
 
-// Table interfaces
 export interface TableColumn<T = any> {
   key: keyof T | string;
   label: string;
@@ -428,11 +347,10 @@ export interface TableColumn<T = any> {
   render?: (value: any, row: T) => React.ReactNode;
 }
 
-// Fixed TableAction interface to include "ghost" variant
 export interface TableAction<T = any> {
   label: string;
   icon?: any;
-  variant?: "primary" | "secondary" | "danger" | "ghost"; // Added "ghost" variant
+  variant?: "primary" | "secondary" | "danger" | "ghost";
   onClick: (row: T) => void;
   show?: (row: T) => boolean;
 }
@@ -466,7 +384,6 @@ export interface FormField {
   description?: string;
 }
 
-// Modal interfaces
 export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -476,7 +393,6 @@ export interface ModalProps {
   showCloseButton?: boolean;
 }
 
-// Theme interfaces
 export interface ThemeContextType {
   isDark: boolean;
   toggleTheme: () => void;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { FileEntity, FileType, TableAction } from "../types";
+import { FileEntity, FileType, TableAction, PagedResult } from "../types";
 import { fileEntityConfig } from "../config/EntityConfig";
 import { apiService } from "../Services/ApiServices";
 import Table from "../components/ui/Tabble";
@@ -25,17 +25,27 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
     {}
   );
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 20;
 
   useEffect(() => {
     fetchFiles();
-  }, [filterType]);
+  }, [filterType, currentPage, searchTerm]);
 
   const fetchFiles = async () => {
     try {
       setLoading(true);
-      const result = await apiService.get<FileEntity[]>("/files");
 
-      let filteredFiles = result;
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+      });
+
+      if (searchTerm) {
+        params.append("search", searchTerm);
+      }
+
       if (filterType) {
         const typeMap: Record<string, FileType> = {
           documents: FileType.Document,
@@ -44,12 +54,15 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
           audio: FileType.Audio,
           archives: FileType.Archive,
         };
-        filteredFiles = result.filter(
-          (file) => file.fileType === typeMap[filterType]
-        );
+        params.append("fileType", typeMap[filterType].toString());
       }
 
-      setFiles(filteredFiles);
+      const result = await apiService.get<PagedResult<FileEntity>>(
+        `/file?${params.toString()}`
+      );
+
+      setFiles(result.items);
+      setTotalCount(result.totalCount);
     } catch (error) {
       console.error("Error fetching files:", error);
       toast.error("Failed to load files");
@@ -63,15 +76,31 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
 
     for (const file of acceptedFiles) {
       try {
-        const result = await apiService.uploadFile<FileEntity>(
-          "/files/upload",
-          file,
-          (progress) => {
-            setUploadProgress((prev) => ({ ...prev, [file.name]: progress }));
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const result = await apiService.post<FileEntity>(
+          "/file/upload",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+            onUploadProgress: (progressEvent) => {
+              if (progressEvent.total) {
+                const progress = Math.round(
+                  (progressEvent.loaded * 100) / progressEvent.total
+                );
+                setUploadProgress((prev) => ({
+                  ...prev,
+                  [file.name]: progress,
+                }));
+              }
+            },
           }
         );
 
-        setFiles((prev) => [...prev, result]);
+        await fetchFiles(); // Refresh the list
         toast.success(`${file.name} uploaded successfully`);
       } catch (error) {
         console.error(`Error uploading ${file.name}:`, error);
@@ -109,8 +138,8 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
     }
 
     try {
-      await apiService.delete(`/files/${file.id}`);
-      setFiles((prev) => prev.filter((f) => f.id !== file.id));
+      await apiService.delete(`/file/${file.id}`);
+      await fetchFiles(); // Refresh the list
       toast.success("File deleted successfully");
     } catch (error) {
       console.error("Error deleting file:", error);
@@ -120,16 +149,7 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
 
   const handleDownload = async (file: FileEntity) => {
     try {
-      const response = await fetch(file.fileUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.originalFileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      window.open(`/api/file/${file.id}/download`, "_blank");
     } catch (error) {
       console.error("Error downloading file:", error);
       toast.error("Failed to download file");
@@ -141,12 +161,10 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
 
     try {
       const result = await apiService.put<FileEntity>(
-        `/files/${editingFile.id}`,
+        `/file/${editingFile.id}`,
         formData
       );
-      setFiles((prev) =>
-        prev.map((f) => (f.id === editingFile.id ? result : f))
-      );
+      await fetchFiles(); // Refresh the list
       setEditModalOpen(false);
       toast.success("File updated successfully");
     } catch (error) {
@@ -175,17 +193,6 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
       onClick: handleDelete,
     },
   ];
-
-  // Filter files based on search term
-  const filteredFiles = searchTerm
-    ? files.filter(
-        (file) =>
-          file.originalFileName
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          file.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : files;
 
   const getPageTitle = () => {
     const titles = {
@@ -220,7 +227,10 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
               type="text"
               placeholder="Search files..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm"
             />
           </div>
@@ -233,12 +243,54 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
 
       {/* Files Table */}
       <Table
-        data={filteredFiles}
+        data={files}
         columns={fileEntityConfig.columns}
         actions={tableActions}
         loading={loading}
         emptyMessage="No files found"
       />
+
+      {/* Pagination */}
+      {totalCount > pageSize && (
+        <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+          <div className="flex items-center">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Showing{" "}
+              <span className="font-medium">
+                {(currentPage - 1) * pageSize + 1}
+              </span>{" "}
+              to{" "}
+              <span className="font-medium">
+                {Math.min(currentPage * pageSize, totalCount)}
+              </span>{" "}
+              of <span className="font-medium">{totalCount}</span> results
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              leftIcon="chevron-left"
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Page {currentPage} of {Math.ceil(totalCount / pageSize)}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+              rightIcon="chevron-right"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Upload Modal */}
       <Modal

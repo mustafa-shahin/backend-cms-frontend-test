@@ -25,9 +25,16 @@ class ApiService {
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // Log the request for debugging
+        console.log(
+          `🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`
+        );
+
         return config;
       },
       (error) => {
+        console.error("🔴 Request interceptor error:", error);
         return Promise.reject(error);
       }
     );
@@ -35,10 +42,22 @@ class ApiService {
     // Response interceptor to handle errors globally
     this.client.interceptors.response.use(
       (response: AxiosResponse) => {
+        console.log(
+          `✅ API Response: ${response.config.method?.toUpperCase()} ${
+            response.config.url
+          } - ${response.status}`
+        );
         return response;
       },
       async (error) => {
         const originalRequest = error.config;
+
+        console.error(
+          `❌ API Error: ${originalRequest?.method?.toUpperCase()} ${
+            originalRequest?.url
+          } - ${error.response?.status}`,
+          error.response?.data
+        );
 
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
@@ -52,6 +71,7 @@ class ApiService {
             return this.client(originalRequest);
           } catch (refreshError) {
             // Refresh failed, redirect to login
+            console.error("🔴 Token refresh failed, redirecting to login");
             localStorage.removeItem("accessToken");
             localStorage.removeItem("refreshToken");
             window.location.href = "/login";
@@ -59,13 +79,20 @@ class ApiService {
           }
         }
 
-        // Show error toast for non-401 errors
+        // Show error toast for non-401 errors (but not for 404s in development)
         if (error.response?.status !== 401) {
           const message =
             error.response?.data?.message ||
             error.message ||
             "An error occurred";
-          toast.error(message);
+
+          // Only show toast for non-404 errors or in production
+          if (
+            error.response?.status !== 404 ||
+            process.env.NODE_ENV === "production"
+          ) {
+            toast.error(message);
+          }
         }
 
         return Promise.reject(error);

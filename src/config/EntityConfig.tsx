@@ -5,18 +5,207 @@ import {
   Location,
   FileEntity,
   Folder,
+  Company,
   UserRole,
   PageStatus,
   FolderType,
+  Address,
+  ContactDetails,
 } from "../types";
 import { EntityManagerConfig } from "../components/ui/EntityManager";
 import { format } from "date-fns";
 
-// User Entity Configuration
+// Helper function to create address fields
+const createAddressFields = (prefix: string = "addresses[0]") => [
+  {
+    name: `${prefix}.street`,
+    label: "Street Address",
+    type: "text" as const,
+    required: true,
+    validation: { required: "Street address is required" },
+  },
+  {
+    name: `${prefix}.street2`,
+    label: "Street Address 2",
+    type: "text" as const,
+    placeholder: "Apartment, suite, etc.",
+  },
+  {
+    name: `${prefix}.city`,
+    label: "City",
+    type: "text" as const,
+    required: true,
+    validation: { required: "City is required" },
+  },
+  {
+    name: `${prefix}.state`,
+    label: "State/Province",
+    type: "text" as const,
+    required: true,
+    validation: { required: "State/Province is required" },
+  },
+  {
+    name: `${prefix}.country`,
+    label: "Country",
+    type: "text" as const,
+    required: true,
+    validation: { required: "Country is required" },
+  },
+  {
+    name: `${prefix}.postalCode`,
+    label: "Postal Code",
+    type: "text" as const,
+    required: true,
+    validation: { required: "Postal code is required" },
+  },
+  {
+    name: `${prefix}.region`,
+    label: "Region",
+    type: "text" as const,
+  },
+  {
+    name: `${prefix}.district`,
+    label: "District",
+    type: "text" as const,
+  },
+  {
+    name: `${prefix}.addressType`,
+    label: "Address Type",
+    type: "select" as const,
+    options: [
+      { value: "Home", label: "Home" },
+      { value: "Work", label: "Work" },
+      { value: "Office", label: "Office" },
+      { value: "Main", label: "Main" },
+      { value: "Billing", label: "Billing" },
+      { value: "Shipping", label: "Shipping" },
+    ],
+  },
+  {
+    name: `${prefix}.isDefault`,
+    label: "Default Address",
+    type: "checkbox" as const,
+  },
+  {
+    name: `${prefix}.notes`,
+    label: "Address Notes",
+    type: "textarea" as const,
+    rows: 2,
+  },
+];
+
+// Helper function to create contact details fields
+const createContactDetailsFields = (prefix: string = "contactDetails[0]") => [
+  {
+    name: `${prefix}.primaryPhone`,
+    label: "Primary Phone",
+    type: "text" as const,
+    placeholder: "+1 (555) 123-4567",
+  },
+  {
+    name: `${prefix}.secondaryPhone`,
+    label: "Secondary Phone",
+    type: "text" as const,
+    placeholder: "+1 (555) 123-4567",
+  },
+  {
+    name: `${prefix}.mobile`,
+    label: "Mobile Phone",
+    type: "text" as const,
+    placeholder: "+1 (555) 123-4567",
+  },
+  {
+    name: `${prefix}.fax`,
+    label: "Fax",
+    type: "text" as const,
+    placeholder: "+1 (555) 123-4567",
+  },
+  {
+    name: `${prefix}.email`,
+    label: "Contact Email",
+    type: "email" as const,
+    validation: {
+      pattern: {
+        value: /^\S+@\S+$/i,
+        message: "Invalid email address",
+      },
+    },
+  },
+  {
+    name: `${prefix}.secondaryEmail`,
+    label: "Secondary Email",
+    type: "email" as const,
+    validation: {
+      pattern: {
+        value: /^\S+@\S+$/i,
+        message: "Invalid email address",
+      },
+    },
+  },
+  {
+    name: `${prefix}.website`,
+    label: "Website",
+    type: "text" as const,
+    placeholder: "https://example.com",
+  },
+  {
+    name: `${prefix}.linkedInProfile`,
+    label: "LinkedIn Profile",
+    type: "text" as const,
+    placeholder: "https://linkedin.com/in/username",
+  },
+  {
+    name: `${prefix}.twitterProfile`,
+    label: "Twitter Profile",
+    type: "text" as const,
+    placeholder: "https://twitter.com/username",
+  },
+  {
+    name: `${prefix}.facebookProfile`,
+    label: "Facebook Profile",
+    type: "text" as const,
+    placeholder: "https://facebook.com/username",
+  },
+  {
+    name: `${prefix}.instagramProfile`,
+    label: "Instagram Profile",
+    type: "text" as const,
+    placeholder: "https://instagram.com/username",
+  },
+  {
+    name: `${prefix}.whatsAppNumber`,
+    label: "WhatsApp Number",
+    type: "text" as const,
+    placeholder: "+1 (555) 123-4567",
+  },
+  {
+    name: `${prefix}.telegramHandle`,
+    label: "Telegram Handle",
+    type: "text" as const,
+    placeholder: "@username",
+  },
+  {
+    name: `${prefix}.contactType`,
+    label: "Contact Type",
+    type: "select" as const,
+    options: [
+      { value: "Personal", label: "Personal" },
+      { value: "Business", label: "Business" },
+      { value: "Work", label: "Work" },
+      { value: "Emergency", label: "Emergency" },
+    ],
+  },
+  {
+    name: `${prefix}.isDefault`,
+    label: "Default Contact",
+    type: "checkbox" as const,
+  },
+];
+
 export const userEntityConfig: EntityManagerConfig<User> = {
   entityName: "User",
   entityNamePlural: "Users",
-  apiEndpoint: "/users",
+  apiEndpoint: "/user",
   columns: [
     {
       key: "firstName",
@@ -70,6 +259,7 @@ export const userEntityConfig: EntityManagerConfig<User> = {
     },
   ],
   formFields: [
+    // Basic User Information
     {
       name: "firstName",
       label: "First Name",
@@ -105,19 +295,6 @@ export const userEntityConfig: EntityManagerConfig<User> = {
       validation: { required: "Username is required" },
     },
     {
-      name: "password",
-      label: "Password",
-      type: "password",
-      required: true,
-      validation: {
-        required: "Password is required",
-        minLength: {
-          value: 8,
-          message: "Password must be at least 8 characters",
-        },
-      },
-    },
-    {
       name: "role",
       label: "Role",
       type: "select",
@@ -146,25 +323,529 @@ export const userEntityConfig: EntityManagerConfig<User> = {
       type: "text",
       placeholder: "en",
     },
+
+    // Address Fields
+    ...createAddressFields("addresses[0]"),
+
+    // Contact Details Fields
+    ...createContactDetailsFields("contactDetails[0]"),
   ],
   transformDataForForm: (user) => ({
     ...user,
-    password: "", // Don't populate password field
+    // Ensure we have at least empty address and contact details for the form
+    addresses: user.addresses?.length > 0 ? user.addresses : [{}],
+    contactDetails:
+      user.contactDetails?.length > 0 ? user.contactDetails : [{}],
   }),
   transformDataForApi: (data) => {
     const transformed = { ...data };
-    if (!transformed.password) {
-      delete transformed.password; // Don't send empty password
+
+    // Clean up empty address and contact details
+    if (transformed.addresses) {
+      transformed.addresses = transformed.addresses.filter(
+        (addr: Address) =>
+          addr.street || addr.city || addr.state || addr.country
+      );
     }
+
+    if (transformed.contactDetails) {
+      transformed.contactDetails = transformed.contactDetails.filter(
+        (contact: ContactDetails) =>
+          contact.primaryPhone || contact.email || contact.website
+      );
+    }
+
     return transformed;
   },
 };
 
-// Page Entity Configuration
+// Company Entity Configuration with Address and Contact Details
+export const companyEntityConfig: EntityManagerConfig<Company> = {
+  entityName: "Company",
+  entityNamePlural: "Company",
+  apiEndpoint: "/company",
+  canCreate: false, // Usually only one company
+  canDelete: false, // Usually can't delete company
+  columns: [
+    {
+      key: "name",
+      label: "Company Name",
+    },
+    {
+      key: "description",
+      label: "Description",
+    },
+    {
+      key: "currency",
+      label: "Currency",
+    },
+    {
+      key: "language",
+      label: "Language",
+    },
+    {
+      key: "isActive",
+      label: "Status",
+      render: (isActive) => (
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            isActive
+              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+              : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+          }`}
+        >
+          {isActive ? "Active" : "Inactive"}
+        </span>
+      ),
+    },
+  ],
+  formFields: [
+    // Basic Company Information
+    {
+      name: "name",
+      label: "Company Name",
+      type: "text",
+      required: true,
+      validation: { required: "Company name is required" },
+    },
+    {
+      name: "description",
+      label: "Description",
+      type: "textarea",
+      rows: 3,
+    },
+    {
+      name: "logo",
+      label: "Logo URL",
+      type: "text",
+      description: "URL to the company logo image",
+    },
+    {
+      name: "favicon",
+      label: "Favicon URL",
+      type: "text",
+      description: "URL to the company favicon",
+    },
+    {
+      name: "timezone",
+      label: "Timezone",
+      type: "select",
+      options: [
+        { value: "UTC", label: "UTC" },
+        { value: "America/New_York", label: "Eastern Time" },
+        { value: "America/Chicago", label: "Central Time" },
+        { value: "America/Denver", label: "Mountain Time" },
+        { value: "America/Los_Angeles", label: "Pacific Time" },
+        { value: "Europe/London", label: "London" },
+        { value: "Europe/Paris", label: "Paris" },
+        { value: "Europe/Berlin", label: "Berlin" },
+        { value: "Asia/Tokyo", label: "Tokyo" },
+        { value: "Asia/Shanghai", label: "Shanghai" },
+        { value: "Australia/Sydney", label: "Sydney" },
+      ],
+    },
+    {
+      name: "currency",
+      label: "Currency",
+      type: "select",
+      options: [
+        { value: "USD", label: "US Dollar (USD)" },
+        { value: "EUR", label: "Euro (EUR)" },
+        { value: "GBP", label: "British Pound (GBP)" },
+        { value: "JPY", label: "Japanese Yen (JPY)" },
+        { value: "CAD", label: "Canadian Dollar (CAD)" },
+        { value: "AUD", label: "Australian Dollar (AUD)" },
+      ],
+    },
+    {
+      name: "language",
+      label: "Default Language",
+      type: "select",
+      options: [
+        { value: "en", label: "English" },
+        { value: "es", label: "Spanish" },
+        { value: "fr", label: "French" },
+        { value: "de", label: "German" },
+        { value: "it", label: "Italian" },
+        { value: "ja", label: "Japanese" },
+        { value: "zh", label: "Chinese" },
+      ],
+    },
+
+    // Address Fields
+    ...createAddressFields("addresses[0]"),
+
+    // Contact Details Fields
+    ...createContactDetailsFields("contactDetails[0]"),
+  ],
+  transformDataForForm: (company) => ({
+    ...company,
+    // Ensure we have at least empty address and contact details for the form
+    addresses: company.addresses?.length > 0 ? company.addresses : [{}],
+    contactDetails:
+      company.contactDetails?.length > 0 ? company.contactDetails : [{}],
+  }),
+  transformDataForApi: (data) => {
+    const transformed = { ...data };
+
+    // Clean up empty address and contact details
+    if (transformed.addresses) {
+      transformed.addresses = transformed.addresses.filter(
+        (addr: Address) =>
+          addr.street || addr.city || addr.state || addr.country
+      );
+    }
+
+    if (transformed.contactDetails) {
+      transformed.contactDetails = transformed.contactDetails.filter(
+        (contact: ContactDetails) =>
+          contact.primaryPhone || contact.email || contact.website
+      );
+    }
+
+    return transformed;
+  },
+};
+
+export const locationEntityConfig: EntityManagerConfig<Location> = {
+  entityName: "Location",
+  entityNamePlural: "Locations",
+  apiEndpoint: "/location",
+  columns: [
+    {
+      key: "name",
+      label: "Name",
+    },
+    {
+      key: "locationCode",
+      label: "Code",
+    },
+    {
+      key: "locationType",
+      label: "Type",
+    },
+    {
+      key: "isMainLocation",
+      label: "Main",
+      render: (isMain) =>
+        isMain ? (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+            Main
+          </span>
+        ) : null,
+    },
+    {
+      key: "isActive",
+      label: "Status",
+      render: (isActive) => (
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            isActive
+              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+              : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+          }`}
+        >
+          {isActive ? "Active" : "Inactive"}
+        </span>
+      ),
+    },
+  ],
+  formFields: [
+    // Basic Location Information
+    {
+      name: "name",
+      label: "Location Name",
+      type: "text",
+      required: true,
+      validation: { required: "Location name is required" },
+    },
+    {
+      name: "description",
+      label: "Description",
+      type: "textarea",
+      rows: 3,
+    },
+    {
+      name: "locationCode",
+      label: "Location Code",
+      type: "text",
+      description: "Unique identifier for this location",
+    },
+    {
+      name: "locationType",
+      label: "Location Type",
+      type: "select",
+      required: true,
+      options: [
+        { value: "Branch", label: "Branch" },
+        { value: "Headquarters", label: "Headquarters" },
+        { value: "Warehouse", label: "Warehouse" },
+        { value: "Office", label: "Office" },
+        { value: "Store", label: "Store" },
+      ],
+      validation: { required: "Location type is required" },
+    },
+    {
+      name: "isMainLocation",
+      label: "Main Location",
+      type: "checkbox",
+    },
+    {
+      name: "isActive",
+      label: "Active",
+      type: "checkbox",
+    },
+
+    // Address Fields
+    ...createAddressFields("addresses[0]"),
+
+    // Contact Details Fields
+    ...createContactDetailsFields("contactDetails[0]"),
+  ],
+  transformDataForForm: (location) => ({
+    ...location,
+    addresses: location.addresses?.length > 0 ? location.addresses : [{}],
+    contactDetails:
+      location.contactDetails?.length > 0 ? location.contactDetails : [{}],
+  }),
+  transformDataForApi: (data) => {
+    const transformed = { ...data };
+
+    if (transformed.addresses) {
+      transformed.addresses = transformed.addresses.filter(
+        (addr: Address) =>
+          addr.street || addr.city || addr.state || addr.country
+      );
+    }
+
+    if (transformed.contactDetails) {
+      transformed.contactDetails = transformed.contactDetails.filter(
+        (contact: ContactDetails) =>
+          contact.primaryPhone || contact.email || contact.website
+      );
+    }
+
+    return transformed;
+  },
+};
+
+export const fileEntityConfig: EntityManagerConfig<FileEntity> = {
+  entityName: "File",
+  entityNamePlural: "Files",
+  apiEndpoint: "/file",
+  canCreate: false,
+  columns: [
+    {
+      key: "originalFileName",
+      label: "Name",
+      render: (fileName, file) => (
+        <div className="flex items-center">
+          <div className="flex-shrink-0 h-8 w-8">
+            {file.fileType === 1 ? (
+              file.thumbnailUrl ? (
+                <img
+                  src={file.thumbnailUrl}
+                  alt={file.alt || fileName}
+                  className="h-8 w-8 object-cover rounded"
+                />
+              ) : (
+                <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                    IMG
+                  </span>
+                </div>
+              )
+            ) : (
+              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  {file.fileExtension.replace(".", "").toUpperCase()}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="ml-3">
+            <div className="text-sm font-medium text-gray-900 dark:text-white">
+              {fileName}
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {file.fileSizeFormatted}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "fileType",
+      label: "Type",
+      render: (type) => {
+        const typeNames = [
+          "Document",
+          "Image",
+          "Video",
+          "Audio",
+          "Archive",
+          "Other",
+        ];
+        return typeNames[type] || "Unknown";
+      },
+    },
+    {
+      key: "isPublic",
+      label: "Visibility",
+      render: (isPublic) => (
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            isPublic
+              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+              : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+          }`}
+        >
+          {isPublic ? "Public" : "Private"}
+        </span>
+      ),
+    },
+    {
+      key: "downloadCount",
+      label: "Downloads",
+    },
+    {
+      key: "createdAt",
+      label: "Uploaded",
+      render: (date) => format(new Date(date), "MMM dd, yyyy"),
+    },
+  ],
+  formFields: [
+    {
+      name: "description",
+      label: "Description",
+      type: "textarea",
+      rows: 3,
+    },
+    {
+      name: "alt",
+      label: "Alt Text",
+      type: "text",
+      description: "Alternative text for images",
+    },
+    {
+      name: "isPublic",
+      label: "Public",
+      type: "checkbox",
+    },
+  ],
+};
+
+export const folderEntityConfig: EntityManagerConfig<Folder> = {
+  entityName: "Folder",
+  entityNamePlural: "Folders",
+  apiEndpoint: "/folder",
+  columns: [
+    {
+      key: "name",
+      label: "Name",
+      render: (name, folder) => (
+        <div className="flex items-center">
+          <div className="flex-shrink-0 h-8 w-8 text-blue-500">📁</div>
+          <div className="ml-3">
+            <div className="text-sm font-medium text-gray-900 dark:text-white">
+              {name}
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {folder.fileCount} files, {folder.subFolderCount} folders
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "path",
+      label: "Path",
+      render: (path) => (
+        <code className="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+          {path}
+        </code>
+      ),
+    },
+    {
+      key: "folderType",
+      label: "Type",
+      render: (type) => {
+        const typeNames = [
+          "General",
+          "Images",
+          "Documents",
+          "Videos",
+          "Audio",
+          "User Avatars",
+          "Company Assets",
+          "Temporary",
+        ];
+        return typeNames[type] || "Unknown";
+      },
+    },
+    {
+      key: "totalSizeFormatted",
+      label: "Size",
+    },
+    {
+      key: "isPublic",
+      label: "Visibility",
+      render: (isPublic) => (
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            isPublic
+              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+              : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+          }`}
+        >
+          {isPublic ? "Public" : "Private"}
+        </span>
+      ),
+    },
+  ],
+  formFields: [
+    {
+      name: "name",
+      label: "Folder Name",
+      type: "text",
+      required: true,
+      validation: { required: "Folder name is required" },
+    },
+    {
+      name: "description",
+      label: "Description",
+      type: "textarea",
+      rows: 3,
+    },
+    {
+      name: "folderType",
+      label: "Folder Type",
+      type: "select",
+      required: true,
+      options: [
+        { value: FolderType.General, label: "General" },
+        { value: FolderType.Images, label: "Images" },
+        { value: FolderType.Documents, label: "Documents" },
+        { value: FolderType.Videos, label: "Videos" },
+        { value: FolderType.Audio, label: "Audio" },
+        { value: FolderType.UserAvatars, label: "User Avatars" },
+        { value: FolderType.CompanyAssets, label: "Company Assets" },
+        { value: FolderType.Temporary, label: "Temporary" },
+      ],
+      validation: { required: "Folder type is required" },
+    },
+    {
+      name: "isPublic",
+      label: "Public",
+      type: "checkbox",
+    },
+  ],
+};
+
 export const pageEntityConfig: EntityManagerConfig<Page> = {
   entityName: "Page",
   entityNamePlural: "Pages",
-  apiEndpoint: "/pages",
+  apiEndpoint: "/page",
   columns: [
     {
       key: "name",
@@ -277,304 +958,6 @@ export const pageEntityConfig: EntityManagerConfig<Page> = {
     {
       name: "adminOnly",
       label: "Admin Only",
-      type: "checkbox",
-    },
-  ],
-};
-
-// Location Entity Configuration
-export const locationEntityConfig: EntityManagerConfig<Location> = {
-  entityName: "Location",
-  entityNamePlural: "Locations",
-  apiEndpoint: "/locations",
-  columns: [
-    {
-      key: "name",
-      label: "Name",
-    },
-    {
-      key: "locationCode",
-      label: "Code",
-    },
-    {
-      key: "locationType",
-      label: "Type",
-    },
-    {
-      key: "isMainLocation",
-      label: "Main",
-      render: (isMain) =>
-        isMain ? (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-            Main
-          </span>
-        ) : null,
-    },
-    {
-      key: "isActive",
-      label: "Status",
-      render: (isActive) => (
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            isActive
-              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-              : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-          }`}
-        >
-          {isActive ? "Active" : "Inactive"}
-        </span>
-      ),
-    },
-  ],
-  formFields: [
-    {
-      name: "name",
-      label: "Location Name",
-      type: "text",
-      required: true,
-      validation: { required: "Location name is required" },
-    },
-    {
-      name: "description",
-      label: "Description",
-      type: "textarea",
-      rows: 3,
-    },
-    {
-      name: "locationCode",
-      label: "Location Code",
-      type: "text",
-      description: "Unique identifier for this location",
-    },
-    {
-      name: "locationType",
-      label: "Location Type",
-      type: "select",
-      required: true,
-      options: [
-        { value: "Branch", label: "Branch" },
-        { value: "Headquarters", label: "Headquarters" },
-        { value: "Warehouse", label: "Warehouse" },
-        { value: "Office", label: "Office" },
-        { value: "Store", label: "Store" },
-      ],
-      validation: { required: "Location type is required" },
-    },
-    {
-      name: "isMainLocation",
-      label: "Main Location",
-      type: "checkbox",
-    },
-    {
-      name: "isActive",
-      label: "Active",
-      type: "checkbox",
-    },
-  ],
-};
-
-// File Entity Configuration
-export const fileEntityConfig: EntityManagerConfig<FileEntity> = {
-  entityName: "File",
-  entityNamePlural: "Files",
-  apiEndpoint: "/files",
-  canCreate: false, // Files are uploaded, not created via form
-  columns: [
-    {
-      key: "originalFileName",
-      label: "Name",
-      render: (fileName, file) => (
-        <div className="flex items-center">
-          <div className="flex-shrink-0 h-8 w-8">
-            {file.fileType === 1 ? ( // Image
-              <img
-                src={file.thumbnailUrl || file.fileUrl}
-                alt={file.alt || fileName}
-                className="h-8 w-8 object-cover rounded"
-              />
-            ) : (
-              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                  {file.fileExtension.replace(".", "").toUpperCase()}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="ml-3">
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {fileName}
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              {file.fileSizeFormatted}
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "fileType",
-      label: "Type",
-      render: (type) => {
-        const typeNames = [
-          "Document",
-          "Image",
-          "Video",
-          "Audio",
-          "Archive",
-          "Other",
-        ];
-        return typeNames[type] || "Unknown";
-      },
-    },
-    {
-      key: "isPublic",
-      label: "Visibility",
-      render: (isPublic) => (
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            isPublic
-              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-              : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-          }`}
-        >
-          {isPublic ? "Public" : "Private"}
-        </span>
-      ),
-    },
-    {
-      key: "downloadCount",
-      label: "Downloads",
-    },
-    {
-      key: "createdAt",
-      label: "Uploaded",
-      render: (date) => format(new Date(date), "MMM dd, yyyy"),
-    },
-  ],
-  formFields: [
-    {
-      name: "description",
-      label: "Description",
-      type: "textarea",
-      rows: 3,
-    },
-    {
-      name: "alt",
-      label: "Alt Text",
-      type: "text",
-      description: "Alternative text for images",
-    },
-    {
-      name: "isPublic",
-      label: "Public",
-      type: "checkbox",
-    },
-  ],
-};
-
-// Folder Entity Configuration
-export const folderEntityConfig: EntityManagerConfig<Folder> = {
-  entityName: "Folder",
-  entityNamePlural: "Folders",
-  apiEndpoint: "/folders",
-  columns: [
-    {
-      key: "name",
-      label: "Name",
-      render: (name, folder) => (
-        <div className="flex items-center">
-          <div className="flex-shrink-0 h-8 w-8 text-blue-500">📁</div>
-          <div className="ml-3">
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {name}
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              {folder.fileCount} files, {folder.subFolderCount} folders
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "path",
-      label: "Path",
-      render: (path) => (
-        <code className="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-          {path}
-        </code>
-      ),
-    },
-    {
-      key: "folderType",
-      label: "Type",
-      render: (type) => {
-        const typeNames = [
-          "General",
-          "Images",
-          "Documents",
-          "Videos",
-          "Audio",
-          "User Avatars",
-          "Company Assets",
-          "Temporary",
-        ];
-        return typeNames[type] || "Unknown";
-      },
-    },
-    {
-      key: "totalSizeFormatted",
-      label: "Size",
-    },
-    {
-      key: "isPublic",
-      label: "Visibility",
-      render: (isPublic) => (
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            isPublic
-              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-              : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-          }`}
-        >
-          {isPublic ? "Public" : "Private"}
-        </span>
-      ),
-    },
-  ],
-  formFields: [
-    {
-      name: "name",
-      label: "Folder Name",
-      type: "text",
-      required: true,
-      validation: { required: "Folder name is required" },
-    },
-    {
-      name: "description",
-      label: "Description",
-      type: "textarea",
-      rows: 3,
-    },
-    {
-      name: "folderType",
-      label: "Folder Type",
-      type: "select",
-      required: true,
-      options: [
-        { value: FolderType.General, label: "General" },
-        { value: FolderType.Images, label: "Images" },
-        { value: FolderType.Documents, label: "Documents" },
-        { value: FolderType.Videos, label: "Videos" },
-        { value: FolderType.Audio, label: "Audio" },
-        { value: FolderType.UserAvatars, label: "User Avatars" },
-        { value: FolderType.CompanyAssets, label: "Company Assets" },
-        { value: FolderType.Temporary, label: "Temporary" },
-      ],
-      validation: { required: "Folder type is required" },
-    },
-    {
-      name: "isPublic",
-      label: "Public",
       type: "checkbox",
     },
   ],

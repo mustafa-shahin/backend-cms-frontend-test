@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { TableColumn, TableAction, FormField } from "../../types";
+import { TableColumn, TableAction, FormField, PagedResult } from "../../types";
 import Table from "./Tabble";
 import Modal from "./Modal";
 import Form from "./Form";
@@ -48,6 +48,9 @@ function EntityManager<T extends { id: number | string }>({
   const [formLoading, setFormLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRows, setSelectedRows] = useState<T[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageSize] = useState(10);
 
   const {
     entityName,
@@ -75,23 +78,37 @@ function EntityManager<T extends { id: number | string }>({
     transformDataForApi,
   } = config;
 
-  // Use useCallback to memoize fetchData function to fix useEffect dependency
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const result = await apiService.get<T[]>(apiEndpoint);
-      setData(Array.isArray(result) ? result : []);
+
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+      });
+
+      if (searchTerm) {
+        params.append("search", searchTerm);
+      }
+
+      const result = await apiService.get<PagedResult<T>>(
+        `${apiEndpoint}?${params.toString()}`
+      );
+
+      setData(result.items);
+      setTotalCount(result.totalCount);
     } catch (error) {
       console.error(`Error fetching ${entityNamePlural}:`, error);
       toast.error(`Failed to load ${entityNamePlural}`);
     } finally {
       setLoading(false);
     }
-  }, [apiEndpoint, entityNamePlural]);
+  }, [apiEndpoint, entityNamePlural, currentPage, pageSize, searchTerm]);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]); // Now fetchData is properly memoized
+  }, [fetchData]);
 
   const handleCreate = () => {
     setEditingEntity(null);
@@ -104,7 +121,6 @@ function EntityManager<T extends { id: number | string }>({
   };
 
   const handleView = (entity: T) => {
-    // Implement view logic
     console.log("View entity:", entity);
   };
 
@@ -121,7 +137,8 @@ function EntityManager<T extends { id: number | string }>({
 
     try {
       await apiService.delete(`${apiEndpoint}/${entity.id}`);
-      setData((prev) => prev.filter((item) => item.id !== entity.id));
+      // Refresh the current page
+      await fetchData();
       toast.success(`${entityName} deleted successfully`);
 
       if (onAfterDelete) {
@@ -152,9 +169,9 @@ function EntityManager<T extends { id: number | string }>({
           `${apiEndpoint}/${editingEntity.id}`,
           processedData
         );
-        setData((prev) =>
-          prev.map((item) => (item.id === editingEntity.id ? result : item))
-        );
+
+        // Refresh the data
+        await fetchData();
         toast.success(`${entityName} updated successfully`);
 
         if (onAfterUpdate) {
@@ -167,7 +184,9 @@ function EntityManager<T extends { id: number | string }>({
         }
 
         const result = await apiService.post<T>(apiEndpoint, processedData);
-        setData((prev) => [...prev, result]);
+
+        // Refresh the data
+        await fetchData();
         toast.success(`${entityName} created successfully`);
 
         if (onAfterCreate) {
@@ -194,6 +213,15 @@ function EntityManager<T extends { id: number | string }>({
     }
 
     return editingEntity;
+  };
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   // Build table actions
@@ -231,20 +259,6 @@ function EntityManager<T extends { id: number | string }>({
     ...customActions,
   ];
 
-  // Filter data based on search term
-  const filteredData =
-    searchable && searchTerm
-      ? data.filter((item) => {
-          return columns.some((column) => {
-            const value = (item as any)[column.key];
-            return (
-              value &&
-              value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-            );
-          });
-        })
-      : data;
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -268,7 +282,7 @@ function EntityManager<T extends { id: number | string }>({
                 type="text"
                 placeholder={`Search ${entityNamePlural.toLowerCase()}...`}
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm"
               />
             </div>
@@ -284,7 +298,7 @@ function EntityManager<T extends { id: number | string }>({
 
       {/* Table */}
       <Table
-        data={filteredData}
+        data={data}
         columns={columns}
         actions={tableActions}
         loading={loading}
@@ -294,6 +308,48 @@ function EntityManager<T extends { id: number | string }>({
         onSelectionChange={setSelectedRows}
         sortable={sortable}
       />
+
+      {/* Pagination */}
+      {totalCount > pageSize && (
+        <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+          <div className="flex items-center">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Showing{" "}
+              <span className="font-medium">
+                {(currentPage - 1) * pageSize + 1}
+              </span>{" "}
+              to{" "}
+              <span className="font-medium">
+                {Math.min(currentPage * pageSize, totalCount)}
+              </span>{" "}
+              of <span className="font-medium">{totalCount}</span> results
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1}
+              leftIcon="chevron-left"
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Page {currentPage} of {Math.ceil(totalCount / pageSize)}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+              rightIcon="chevron-right"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Bulk actions */}
       {selectable && selectedRows.length > 0 && (
@@ -308,7 +364,6 @@ function EntityManager<T extends { id: number | string }>({
               variant="danger"
               leftIcon="trash"
               onClick={() => {
-                // Handle bulk delete
                 console.log("Bulk delete:", selectedRows);
               }}
             >
