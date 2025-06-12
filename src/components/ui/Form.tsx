@@ -41,7 +41,7 @@ const Form: React.FC<FormProps> = ({
   const renderField = (field: FormField) => {
     const hasError = errors[field.name];
     const baseInputClasses = clsx(
-      "block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm",
+      "block py-2 px-2 w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm",
       hasError && "border-red-300 focus:border-red-500 focus:ring-red-500",
       field.disabled && "bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
     );
