@@ -92,14 +92,43 @@ function EntityManager<T extends { id: number | string }>({
         params.append("search", searchTerm);
       }
 
-      const result = await apiService.get<PagedResult<T>>(
-        `${apiEndpoint}?${params.toString()}`
-      );
+      try {
+        // Try to fetch as paged result first
+        const result = await apiService.get<PagedResult<T>>(
+          `${apiEndpoint}?${params.toString()}`
+        );
 
-      setData(result.items);
-      setTotalCount(result.totalCount);
+        setData(result.items || []);
+        setTotalCount(result.totalCount || 0);
+      } catch (error: any) {
+        // If paged result fails, try to fetch as simple array (for single entities like Company)
+        if (error.response?.status === 404 || !searchTerm) {
+          try {
+            const result = await apiService.get<T[]>(apiEndpoint);
+            const resultArray = Array.isArray(result) ? result : [result];
+            setData(resultArray);
+            setTotalCount(resultArray.length);
+          } catch (singleError) {
+            // If that also fails, try to get single entity
+            try {
+              const singleResult = await apiService.get<T>(apiEndpoint);
+              setData(singleResult ? [singleResult] : []);
+              setTotalCount(singleResult ? 1 : 0);
+            } catch (finalError) {
+              console.error(`Error fetching ${entityNamePlural}:`, finalError);
+              setData([]);
+              setTotalCount(0);
+              toast.error(`Failed to load ${entityNamePlural}`);
+            }
+          }
+        } else {
+          throw error;
+        }
+      }
     } catch (error) {
       console.error(`Error fetching ${entityNamePlural}:`, error);
+      setData([]);
+      setTotalCount(0);
       toast.error(`Failed to load ${entityNamePlural}`);
     } finally {
       setLoading(false);

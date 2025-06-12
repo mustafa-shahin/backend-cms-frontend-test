@@ -369,7 +369,8 @@ export interface FormField {
     | "checkbox"
     | "file"
     | "date"
-    | "time";
+    | "time"
+    | "datetime-local";
   placeholder?: string;
   required?: boolean;
   validation?: any;

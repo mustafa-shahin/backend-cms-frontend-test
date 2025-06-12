@@ -19,10 +19,10 @@ import PagesPage from "./pages/PagesPage";
 import CompanyPage from "./pages/CompanyPage";
 import LocationsPage from "./pages/LocationsPage";
 import FilesPage from "./pages/FilesPage";
-// import FoldersPage from "./pages/FoldersPage";
-// import JobTriggersPage from "./pages/JobTriggersPage";
-// import JobHistoryPage from "./pages/JobHistoryPage";
-import "./index.css"; // Fixed: Changed from "./styles/index.css" to "./index.css"
+import FoldersPage from "./pages/FoldersPage";
+import JobTriggersPage from "./pages/JobTriggersPage";
+import JobHistoryPage from "./pages/JobHistoryPage";
+import "./index.css";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -60,10 +60,10 @@ function App() {
                           <Route path="company" element={<CompanyPage />} />
                           <Route path="locations" element={<LocationsPage />} />
                           <Route path="files" element={<FilesPage />} />
-                          {/* <Route
+                          <Route
                             path="files/folders"
                             element={<FoldersPage />}
-                          /> */}
+                          />
                           <Route
                             path="files/documents"
                             element={<FilesPage filterType="documents" />}
@@ -84,14 +84,14 @@ function App() {
                             path="files/archives"
                             element={<FilesPage filterType="archives" />}
                           />
-                          {/* <Route
+                          <Route
                             path="jobs/triggers"
                             element={<JobTriggersPage />}
                           />
                           <Route
                             path="jobs/history"
                             element={<JobHistoryPage />}
-                          /> */}
+                          />
                         </Routes>
                       </Layout>
                     </ProtectedRoute>

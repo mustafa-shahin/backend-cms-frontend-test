@@ -4,6 +4,7 @@ import { FileEntity, FileType, TableAction, PagedResult } from "../types";
 import { fileEntityConfig } from "../config/EntityConfig";
 import { apiService } from "../Services/ApiServices";
 import Table from "../components/ui/Tabble";
+import FilesGridView from "../components/ui/FilesGridView";
 import Modal from "../components/ui/Modal";
 import Form from "../components/ui/Form";
 import Button from "../components/ui/Button";
@@ -19,7 +20,9 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
   const [loading, setLoading] = useState(true);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [editingFile, setEditingFile] = useState<FileEntity | null>(null);
+  const [previewFile, setPreviewFile] = useState<FileEntity | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
     {}
@@ -27,6 +30,7 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const pageSize = 20;
 
   useEffect(() => {
@@ -78,6 +82,8 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
       try {
         const formData = new FormData();
         formData.append("file", file);
+        formData.append("isPublic", "true");
+        formData.append("generateThumbnail", "true");
 
         const result = await apiService.post<FileEntity>(
           "/file/upload",
@@ -128,6 +134,11 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
     setEditModalOpen(true);
   };
 
+  const handlePreview = (file: FileEntity) => {
+    setPreviewFile(file);
+    setPreviewModalOpen(true);
+  };
+
   const handleDelete = async (file: FileEntity) => {
     if (
       !window.confirm(
@@ -149,7 +160,22 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
 
   const handleDownload = async (file: FileEntity) => {
     try {
-      window.open(`/api/file/${file.id}/download`, "_blank");
+      const downloadUrl = `${
+        process.env.REACT_APP_API_URL || "http://localhost:5252/api"
+      }/file/${file.id}/download`;
+
+      // Simple approach: create invisible iframe
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.src = downloadUrl;
+      document.body.appendChild(iframe);
+
+      // Remove iframe after download starts
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+
+      toast.success("Download started");
     } catch (error) {
       console.error("Error downloading file:", error);
       toast.error("Failed to download file");
@@ -174,6 +200,13 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
   };
 
   const tableActions: TableAction<FileEntity>[] = [
+    {
+      label: "Preview",
+      icon: "eye",
+      variant: "secondary",
+      onClick: handlePreview,
+      show: (file) => file.canPreview || false,
+    },
     {
       label: "Download",
       icon: "download",
@@ -203,6 +236,94 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
       archives: "Archives",
     };
     return filterType ? titles[filterType] : "All Files";
+  };
+
+  const renderPreviewContent = () => {
+    if (!previewFile) return null;
+
+    const fileUrl = `${
+      process.env.REACT_APP_API_URL || "http://localhost:5252/api"
+    }/file/${previewFile.id}/download`;
+
+    switch (previewFile.fileType) {
+      case FileType.Image:
+        return (
+          <div className="text-center">
+            <img
+              src={fileUrl}
+              alt={previewFile.alt || previewFile.originalFileName}
+              className="max-w-full max-h-96 mx-auto rounded"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236b7280">Failed to load</text></svg>`;
+              }}
+            />
+          </div>
+        );
+      case FileType.Video:
+        return (
+          <video controls className="w-full max-h-96">
+            <source src={fileUrl} type={previewFile.contentType} />
+            Your browser does not support the video tag.
+          </video>
+        );
+      case FileType.Audio:
+        return (
+          <audio controls className="w-full">
+            <source src={fileUrl} type={previewFile.contentType} />
+            Your browser does not support the audio tag.
+          </audio>
+        );
+      case FileType.Document:
+        if (previewFile.contentType === "application/pdf") {
+          return (
+            <iframe
+              src={fileUrl}
+              className="w-full h-96"
+              title={previewFile.originalFileName}
+            />
+          );
+        }
+        return (
+          <div className="text-center py-8">
+            <Icon
+              name="file-text"
+              size="2xl"
+              className="mx-auto text-gray-400 mb-4"
+            />
+            <p className="text-gray-600 dark:text-gray-400">
+              Preview not available for this document type.
+            </p>
+            <Button
+              className="mt-4"
+              leftIcon="download"
+              onClick={() => handleDownload(previewFile)}
+            >
+              Download to view
+            </Button>
+          </div>
+        );
+      default:
+        return (
+          <div className="text-center py-8">
+            <Icon
+              name="file"
+              size="2xl"
+              className="mx-auto text-gray-400 mb-4"
+            />
+            <p className="text-gray-600 dark:text-gray-400">
+              Preview not available for this file type.
+            </p>
+            <Button
+              className="mt-4"
+              leftIcon="download"
+              onClick={() => handleDownload(previewFile)}
+            >
+              Download file
+            </Button>
+          </div>
+        );
+    }
   };
 
   return (
@@ -235,20 +356,53 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
             />
           </div>
 
+          {/* View mode toggle */}
+          <div className="flex rounded-md shadow-sm">
+            <Button
+              size="sm"
+              variant={viewMode === "grid" ? "primary" : "outline"}
+              leftIcon="th"
+              onClick={() => setViewMode("grid")}
+              className="rounded-r-none"
+            >
+              Grid
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === "table" ? "primary" : "outline"}
+              leftIcon="list"
+              onClick={() => setViewMode("table")}
+              className="rounded-l-none border-l-0"
+            >
+              Table
+            </Button>
+          </div>
+
           <Button onClick={() => setUploadModalOpen(true)} leftIcon="upload">
             Upload Files
           </Button>
         </div>
       </div>
 
-      {/* Files Table */}
-      <Table
-        data={files}
-        columns={fileEntityConfig.columns}
-        actions={tableActions}
-        loading={loading}
-        emptyMessage="No files found"
-      />
+      {/* Files Display */}
+      {viewMode === "grid" ? (
+        <FilesGridView
+          files={files}
+          loading={loading}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onDownload={handleDownload}
+          onPreview={handlePreview}
+        />
+      ) : (
+        <Table
+          data={files}
+          columns={fileEntityConfig.columns}
+          actions={tableActions}
+          loading={loading}
+          emptyMessage="No files found"
+        />
+      )}
 
       {/* Pagination */}
       {totalCount > pageSize && (
@@ -374,6 +528,73 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
             submitLabel="Update"
             onCancel={() => setEditModalOpen(false)}
           />
+        )}
+      </Modal>
+
+      {/* Preview Modal */}
+      <Modal
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        title={
+          previewFile
+            ? `Preview: ${previewFile.originalFileName}`
+            : "File Preview"
+        }
+        size="xl"
+      >
+        {previewFile && (
+          <div className="space-y-4">
+            {renderPreviewContent()}
+
+            {/* File info */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Size:
+                  </span>{" "}
+                  <span className="text-gray-900 dark:text-white">
+                    {previewFile.fileSizeFormatted}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Type:
+                  </span>{" "}
+                  <span className="text-gray-900 dark:text-white">
+                    {previewFile.contentType}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Uploaded:
+                  </span>{" "}
+                  <span className="text-gray-900 dark:text-white">
+                    {new Date(previewFile.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Downloads:
+                  </span>{" "}
+                  <span className="text-gray-900 dark:text-white">
+                    {previewFile.downloadCount}
+                  </span>
+                </div>
+              </div>
+
+              {previewFile.description && (
+                <div className="mt-4">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Description:
+                  </span>
+                  <p className="mt-1 text-gray-900 dark:text-white">
+                    {previewFile.description}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </Modal>
     </div>

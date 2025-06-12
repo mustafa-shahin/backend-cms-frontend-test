@@ -24,7 +24,7 @@ interface SortState {
 }
 
 function Table<T extends { id: number | string }>({
-  data,
+  data = [], // Default to empty array
   columns,
   actions = [],
   loading = false,
@@ -169,7 +169,7 @@ function Table<T extends { id: number | string }>({
                   colSpan={
                     columns.length +
                     (selectable ? 1 : 0) +
-                    (actions.length > 0 ? 1 : 0)
+                    (actions.length > 0 ? 1 : 0) // Fixed: was actions.Length
                   }
                   className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
                 >
