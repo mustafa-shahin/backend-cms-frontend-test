@@ -38,13 +38,13 @@ export const navigation: NavigationItem[] = [
     iconSolid: "folder",
     children: [
       {
-        name: "All Files",
+        name: "File Manager",
         href: "/dashboard/files",
         icon: "folder",
         iconSolid: "folder",
       },
       {
-        name: "Folders",
+        name: "Folders (Admin)",
         href: "/dashboard/files/folders",
         icon: "folder",
         iconSolid: "folder",

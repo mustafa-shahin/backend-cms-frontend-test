@@ -769,17 +769,17 @@ export const folderEntityConfig: EntityManagerConfig<Folder> = {
     {
       key: "folderType",
       label: "Type",
-      render: (type) => {
-        const typeNames = [
-          "General",
-          "Images",
-          "Documents",
-          "Videos",
-          "Audio",
-          "User Avatars",
-          "Company Assets",
-          "Temporary",
-        ];
+      render: (type: keyof typeof FolderType) => {
+        const typeNames: Record<string, string> = {
+          General: "General",
+          Images: "Images",
+          Documents: "Documents",
+          Videos: "Videos",
+          Audio: "Audio",
+          UserAvatars: "User Avatars",
+          CompanyAssets: "Company Assets",
+          Temporary: "Temporary",
+        };
         return typeNames[type] || "Unknown";
       },
     },
@@ -823,14 +823,14 @@ export const folderEntityConfig: EntityManagerConfig<Folder> = {
       type: "select",
       required: true,
       options: [
-        { value: FolderType.General, label: "General" },
-        { value: FolderType.Images, label: "Images" },
-        { value: FolderType.Documents, label: "Documents" },
-        { value: FolderType.Videos, label: "Videos" },
-        { value: FolderType.Audio, label: "Audio" },
-        { value: FolderType.UserAvatars, label: "User Avatars" },
-        { value: FolderType.CompanyAssets, label: "Company Assets" },
-        { value: FolderType.Temporary, label: "Temporary" },
+        { value: "General", label: "General" },
+        { value: "Images", label: "Images" },
+        { value: "Documents", label: "Documents" },
+        { value: "Videos", label: "Videos" },
+        { value: "Audio", label: "Audio" },
+        { value: "UserAvatars", label: "User Avatars" },
+        { value: "CompanyAssets", label: "Company Assets" },
+        { value: "Temporary", label: "Temporary" },
       ],
       validation: { required: "Folder type is required" },
     },
@@ -840,6 +840,12 @@ export const folderEntityConfig: EntityManagerConfig<Folder> = {
       type: "checkbox",
     },
   ],
+  transformDataForApi: (data) => {
+    return {
+      ...data,
+      folderType: data.folderType || "General", // Ensure enum string is sent
+    };
+  },
 };
 
 export const pageEntityConfig: EntityManagerConfig<Page> = {

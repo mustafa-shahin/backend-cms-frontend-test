@@ -20,6 +20,7 @@ import CompanyPage from "./pages/CompanyPage";
 import LocationsPage from "./pages/LocationsPage";
 import FilesPage from "./pages/FilesPage";
 import FoldersPage from "./pages/FoldersPage";
+import FileManagerPage from "./pages/FileManagerPage";
 import JobTriggersPage from "./pages/JobTriggersPage";
 import JobHistoryPage from "./pages/JobHistoryPage";
 import "./index.css";
@@ -59,7 +60,13 @@ function App() {
                           <Route path="pages" element={<PagesPage />} />
                           <Route path="company" element={<CompanyPage />} />
                           <Route path="locations" element={<LocationsPage />} />
-                          <Route path="files" element={<FilesPage />} />
+
+                          {/* File Management Routes */}
+                          <Route path="files" element={<FileManagerPage />} />
+                          <Route
+                            path="files/manager"
+                            element={<FileManagerPage />}
+                          />
                           <Route
                             path="files/folders"
                             element={<FoldersPage />}
@@ -84,6 +91,8 @@ function App() {
                             path="files/archives"
                             element={<FilesPage filterType="archives" />}
                           />
+
+                          {/* Job Management Routes */}
                           <Route
                             path="jobs/triggers"
                             element={<JobTriggersPage />}
