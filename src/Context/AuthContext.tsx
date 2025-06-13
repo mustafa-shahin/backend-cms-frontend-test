@@ -102,6 +102,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const refreshToken = async (): Promise<void> => {
+    await apiService.refreshToken();
+  };
+
   const value: AuthContextType = {
     user,
     login,
@@ -109,6 +113,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     isLoading,
     isAuthenticated,
+    refreshToken,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

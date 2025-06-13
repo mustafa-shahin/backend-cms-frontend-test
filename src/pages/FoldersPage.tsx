@@ -1,6 +1,6 @@
 import React from "react";
-import EntityManager from "../components/ui/EntityManager";
-import { Folder } from "../types";
+import EntityManager from "../components/entities/EntityManager";
+import { Folder } from "../types/entities";
 import { folderEntityConfig } from "../config/EntityConfig";
 
 const FoldersPage: React.FC = () => {

@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import clsx from "clsx";
-import { NavigationItem } from "../../../types/index";
-import { navigation } from "../../../data/navigation";
-import Icon from "../../ui/Icon";
+import { NavigationItem } from "../../types";
+import { navigation } from "../../data/navigation";
+import { Icon } from "../common/Icon";
 
 interface SidebarProps {
   isOpen: boolean;

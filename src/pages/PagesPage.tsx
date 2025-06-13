@@ -1,6 +1,6 @@
 import React from "react";
-import EntityManager from "../components/ui/EntityManager";
-import { Page } from "../types";
+import EntityManager from "../components/entities/EntityManager";
+import { Page } from "../types/entities";
 import { pageEntityConfig } from "../config/EntityConfig";
 
 const PagesPage: React.FC = () => {

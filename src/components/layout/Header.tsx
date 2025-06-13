@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../../../Context/AuthContext";
-import { useTheme } from "../../../Context/ThemeContext";
-import Icon from "../../ui/Icon";
-import Button from "../../ui/Button";
+import { useAuth } from "../../Context/AuthContext";
+import { useTheme } from "../../Context/ThemeContext";
+import Icon from "../common/Icon";
+import Button from "../common/Button";
 
 interface HeaderProps {
   onMenuClick: () => void;

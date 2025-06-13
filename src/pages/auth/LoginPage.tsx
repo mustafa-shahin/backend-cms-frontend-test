@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../../Context/AuthContext";
 import { useTheme } from "../../Context/ThemeContext";
-import Button from "../../components/ui/Button";
-import Icon from "../../components/ui/Icon";
-import { LoginRequest } from "../../types";
+import Button from "../../components//common/Button";
+import Icon from "../../components/common/Icon";
+import { LoginRequest } from "../../types/auth";
 
 const LoginPage: React.FC = () => {
   const { login, isAuthenticated, isLoading } = useAuth();

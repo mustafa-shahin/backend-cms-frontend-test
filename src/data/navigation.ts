@@ -1,81 +1,82 @@
 import { NavigationItem } from "../types";
+import { ROUTES } from "../config/constants";
 
 export const navigation: NavigationItem[] = [
   {
     name: "Dashboard",
-    href: "/dashboard",
+    href: ROUTES.DASHBOARD,
     icon: "home",
     iconSolid: "home",
   },
   {
-    name: "Pages",
-    href: "/dashboard/pages",
+    name: "Content",
+    href: ROUTES.PAGES,
     icon: "file-text",
     iconSolid: "file-text",
   },
   {
     name: "Users",
-    href: "/dashboard/users",
+    href: ROUTES.USERS,
     icon: "users",
     iconSolid: "users",
   },
   {
     name: "Company",
-    href: "/dashboard/company",
+    href: ROUTES.COMPANY,
     icon: "building",
     iconSolid: "building",
   },
   {
     name: "Locations",
-    href: "/dashboard/locations",
+    href: ROUTES.LOCATIONS,
     icon: "map-pin",
     iconSolid: "map-pin",
   },
   {
     name: "Files",
-    href: "/dashboard/files",
+    href: ROUTES.FILES,
     icon: "folder",
     iconSolid: "folder",
     children: [
       {
         name: "File Manager",
-        href: "/dashboard/files",
+        href: ROUTES.FILES_MANAGER,
         icon: "folder",
         iconSolid: "folder",
       },
       {
         name: "Folders (Admin)",
-        href: "/dashboard/files/folders",
+        href: ROUTES.FILES_FOLDERS,
         icon: "folder",
         iconSolid: "folder",
       },
       {
         name: "Documents",
-        href: "/dashboard/files/documents",
+        href: ROUTES.FILES_DOCUMENTS,
         icon: "file",
         iconSolid: "file",
       },
       {
         name: "Photos",
-        href: "/dashboard/files/photos",
+        href: ROUTES.FILES_PHOTOS,
         icon: "image",
         iconSolid: "image",
       },
       {
         name: "Videos",
-        href: "/dashboard/files/videos",
+        href: ROUTES.FILES_VIDEOS,
         icon: "video",
         iconSolid: "video",
       },
       {
         name: "Audio",
-        href: "/dashboard/files/audio",
+        href: ROUTES.FILES_AUDIO,
         icon: "music",
         iconSolid: "music",
       },
       {
         name: "Archives",
-        href: "/dashboard/files/archives",
+        href: ROUTES.FILES_ARCHIVES,
         icon: "archive",
         iconSolid: "archive",
       },
@@ -83,22 +84,67 @@ export const navigation: NavigationItem[] = [
   },
   {
     name: "Jobs",
-    href: "/dashboard/jobs",
+    href: ROUTES.JOBS_TRIGGERS,
     icon: "briefcase",
     iconSolid: "briefcase",
     children: [
       {
         name: "Triggers",
-        href: "/dashboard/jobs/triggers",
+        href: ROUTES.JOBS_TRIGGERS,
         icon: "play",
         iconSolid: "play",
       },
       {
-        name: "Jobs History",
-        href: "/dashboard/jobs/history",
+        name: "History",
+        href: ROUTES.JOBS_HISTORY,
         icon: "clock",
         iconSolid: "clock",
       },
     ],
   },
 ];
+
+// Helper function to find navigation item by href
+export const findNavigationItem = (href: string): NavigationItem | null => {
+  const findInItems = (items: NavigationItem[]): NavigationItem | null => {
+    for (const item of items) {
+      if (item.href === href) {
+        return item;
+      }
+      if (item.children) {
+        const found = findInItems(item.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  return findInItems(navigation);
+};
+
+// Helper function to get breadcrumbs for a given route
+export const getBreadcrumbs = (href: string): NavigationItem[] => {
+  const breadcrumbs: NavigationItem[] = [];
+
+  const findPath = (
+    items: NavigationItem[],
+    currentPath: NavigationItem[] = []
+  ): boolean => {
+    for (const item of items) {
+      const newPath = [...currentPath, item];
+
+      if (item.href === href) {
+        breadcrumbs.push(...newPath);
+        return true;
+      }
+
+      if (item.children && findPath(item.children, newPath)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  findPath(navigation);
+  return breadcrumbs;
+};

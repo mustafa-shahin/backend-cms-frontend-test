@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { FileEntity, FileType, TableAction, PagedResult } from "../types";
+import { FileEntity, FileType, TableAction } from "../types/entities";
+import { PagedResult } from "../types/api";
 import { fileEntityConfig } from "../config/EntityConfig";
 import { apiService } from "../Services/ApiServices";
-import Table from "../components/ui/Tabble";
+import Table from "../components/common/Table";
 import FilesGridView from "../components/ui/FilesGridView";
-import Modal from "../components/ui/Modal";
-import Form from "../components/ui/Form";
-import Button from "../components/ui/Button";
-import Icon from "../components/ui/Icon";
+import Modal from "../components/common/Modal";
+import Form from "../components/common/Form";
+import Button from "../components/common/Button";
+import Icon from "../components/common/Icon";
 import toast from "react-hot-toast";
 
 interface FilesPageProps {

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { ThemeContextType } from "../types";
+import { THEME_CONFIG } from "../config/constants";
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -17,7 +18,7 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [isDark, setIsDark] = useState(() => {
-    const stored = localStorage.getItem("theme");
+    const stored = localStorage.getItem(THEME_CONFIG.STORAGE_KEY);
     if (stored) {
       return stored === "dark";
     }
@@ -27,10 +28,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
+      localStorage.setItem(THEME_CONFIG.STORAGE_KEY, "dark");
     } else {
       document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
+      localStorage.setItem(THEME_CONFIG.STORAGE_KEY, "light");
     }
   }, [isDark]);
 

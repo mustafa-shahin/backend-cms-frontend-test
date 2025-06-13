@@ -1,7 +1,8 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../Context/AuthContext";
-import Icon from "../common/Icon";
+import { Icon } from "../common/Icon";
+import { ROUTES } from "../../config/constants";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -27,7 +28,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={ROUTES.LOGIN} replace />;
   }
 
   return <>{children}</>;

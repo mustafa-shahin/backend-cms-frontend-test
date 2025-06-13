@@ -11,8 +11,8 @@ import {
   FolderType,
   Address,
   ContactDetails,
-} from "../types";
-import { EntityManagerConfig } from "../components/ui/EntityManager";
+} from "../types/entities";
+import { EntityManagerConfig } from "../components/entities/EntityManager";
 import { format } from "date-fns";
 
 // Helper function to create address fields
@@ -204,7 +204,6 @@ const createContactDetailsFields = (prefix: string = "contactDetails[0]") => [
 
 export const userEntityConfig: EntityManagerConfig<User> = {
   entityName: "User",
-  entityNamePlural: "Users",
   apiEndpoint: "/user",
   columns: [
     {
@@ -332,7 +331,6 @@ export const userEntityConfig: EntityManagerConfig<User> = {
   ],
   transformDataForForm: (user) => ({
     ...user,
-    // Ensure we have at least empty address and contact details for the form
     addresses: user.addresses?.length > 0 ? user.addresses : [{}],
     contactDetails:
       user.contactDetails?.length > 0 ? user.contactDetails : [{}],
@@ -340,7 +338,6 @@ export const userEntityConfig: EntityManagerConfig<User> = {
   transformDataForApi: (data) => {
     const transformed = { ...data };
 
-    // Clean up empty address and contact details
     if (transformed.addresses) {
       transformed.addresses = transformed.addresses.filter(
         (addr: Address) =>
@@ -359,13 +356,11 @@ export const userEntityConfig: EntityManagerConfig<User> = {
   },
 };
 
-// Company Entity Configuration with Address and Contact Details
 export const companyEntityConfig: EntityManagerConfig<Company> = {
   entityName: "Company",
-  entityNamePlural: "Company",
   apiEndpoint: "/company",
-  canCreate: false, // Usually only one company
-  canDelete: false, // Usually can't delete company
+  canCreate: false,
+  canDelete: false,
   columns: [
     {
       key: "name",
@@ -400,7 +395,6 @@ export const companyEntityConfig: EntityManagerConfig<Company> = {
     },
   ],
   formFields: [
-    // Basic Company Information
     {
       name: "name",
       label: "Company Name",
@@ -472,15 +466,11 @@ export const companyEntityConfig: EntityManagerConfig<Company> = {
       ],
     },
 
-    // Address Fields
     ...createAddressFields("addresses[0]"),
-
-    // Contact Details Fields
     ...createContactDetailsFields("contactDetails[0]"),
   ],
   transformDataForForm: (company) => ({
     ...company,
-    // Ensure we have at least empty address and contact details for the form
     addresses: company.addresses?.length > 0 ? company.addresses : [{}],
     contactDetails:
       company.contactDetails?.length > 0 ? company.contactDetails : [{}],
@@ -488,7 +478,6 @@ export const companyEntityConfig: EntityManagerConfig<Company> = {
   transformDataForApi: (data) => {
     const transformed = { ...data };
 
-    // Clean up empty address and contact details
     if (transformed.addresses) {
       transformed.addresses = transformed.addresses.filter(
         (addr: Address) =>
@@ -509,7 +498,6 @@ export const companyEntityConfig: EntityManagerConfig<Company> = {
 
 export const locationEntityConfig: EntityManagerConfig<Location> = {
   entityName: "Location",
-  entityNamePlural: "Locations",
   apiEndpoint: "/location",
   columns: [
     {
@@ -551,7 +539,6 @@ export const locationEntityConfig: EntityManagerConfig<Location> = {
     },
   ],
   formFields: [
-    // Basic Location Information
     {
       name: "name",
       label: "Location Name",
@@ -596,10 +583,7 @@ export const locationEntityConfig: EntityManagerConfig<Location> = {
       type: "checkbox",
     },
 
-    // Address Fields
     ...createAddressFields("addresses[0]"),
-
-    // Contact Details Fields
     ...createContactDetailsFields("contactDetails[0]"),
   ],
   transformDataForForm: (location) => ({
@@ -631,7 +615,6 @@ export const locationEntityConfig: EntityManagerConfig<Location> = {
 
 export const fileEntityConfig: EntityManagerConfig<FileEntity> = {
   entityName: "File",
-  entityNamePlural: "Files",
   apiEndpoint: "/file",
   canCreate: false,
   columns: [
@@ -737,7 +720,6 @@ export const fileEntityConfig: EntityManagerConfig<FileEntity> = {
 
 export const folderEntityConfig: EntityManagerConfig<Folder> = {
   entityName: "Folder",
-  entityNamePlural: "Folders",
   apiEndpoint: "/folder",
   columns: [
     {
@@ -843,14 +825,13 @@ export const folderEntityConfig: EntityManagerConfig<Folder> = {
   transformDataForApi: (data) => {
     return {
       ...data,
-      folderType: data.folderType || "General", // Ensure enum string is sent
+      folderType: data.folderType || "General",
     };
   },
 };
 
 export const pageEntityConfig: EntityManagerConfig<Page> = {
   entityName: "Page",
-  entityNamePlural: "Pages",
   apiEndpoint: "/page",
   columns: [
     {

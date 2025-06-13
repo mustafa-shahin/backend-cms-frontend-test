@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { FileEntity, Folder, FolderType, PagedResult } from "../../types";
+import { FileEntity, Folder } from "../../types/entities";
+import { PagedResult } from "../../types/api";
 import { apiService } from "../../Services/ApiServices";
-import Button from "./Button";
-import Icon from "./Icon";
-import Modal from "./Modal";
-import Form from "./Form";
+import Button from "../common/Button";
+import Icon from "../common/Icon";
+import Modal from "../common/Modal";
+import Form from "../common/Form";
 import FilesGridView from "./FilesGridView";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
@@ -460,7 +461,7 @@ const FileManager: React.FC<FileManagerProps> = ({ initialFolderId }) => {
                           size="xs"
                           variant="ghost"
                           leftIcon="trash"
-                          onClick={(e) => {
+                          onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             handleDeleteFolder(folder);
                           }}

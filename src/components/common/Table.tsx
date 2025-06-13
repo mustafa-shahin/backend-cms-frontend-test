@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import clsx from "clsx";
-import { TableColumn, TableAction } from "../../types";
+import { TableColumn, TableAction } from "../../types/entities";
 import Icon from "./Icon";
 import Button from "./Button";
 
@@ -24,7 +24,7 @@ interface SortState {
 }
 
 function Table<T extends { id: number | string }>({
-  data = [], // Default to empty array
+  data = [],
   columns,
   actions = [],
   loading = false,
@@ -90,6 +90,9 @@ function Table<T extends { id: number | string }>({
       </div>
     );
   }
+
+  const totalColumns =
+    columns.length + (selectable ? 1 : 0) + (actions.length > 0 ? 1 : 0);
 
   return (
     <div
@@ -166,11 +169,7 @@ function Table<T extends { id: number | string }>({
             {data.length === 0 ? (
               <tr>
                 <td
-                  colSpan={
-                    columns.length +
-                    (selectable ? 1 : 0) +
-                    (actions.length > 0 ? 1 : 0) // Fixed: was actions.Length
-                  }
+                  colSpan={totalColumns}
                   className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
                 >
                   {emptyMessage}

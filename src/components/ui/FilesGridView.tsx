@@ -1,7 +1,7 @@
 import React from "react";
-import { FileEntity, FileType } from "../../types";
-import Button from "./Button";
-import Icon from "./Icon";
+import { FileEntity, FileType } from "../../types/entities";
+import Button from "../common/Button";
+import Icon from "../common/Icon";
 import { format } from "date-fns";
 
 interface FilesGridViewProps {

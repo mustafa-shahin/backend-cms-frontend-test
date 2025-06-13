@@ -1,6 +1,6 @@
 import React from "react";
-import EntityManager from "../components/ui/EntityManager";
-import { User } from "../types";
+import EntityManager from "../components/entities/EntityManager";
+import { User } from "../types/entities";
 import { userEntityConfig } from "../config/EntityConfig";
 
 const UsersPage: React.FC = () => {

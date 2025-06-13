@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { apiService } from "../Services/ApiServices";
-import Button from "../components/ui/Button";
-import Icon from "../components/ui/Icon";
-import Modal from "../components/ui/Modal";
+import Button from "../components/common/Button";
+import Icon from "../components/common/Icon";
+import Modal from "../components/common/Modal";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 

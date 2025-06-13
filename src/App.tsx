@@ -9,8 +9,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "./Context/ThemeContext";
 import { AuthProvider } from "./Context/AuthContext";
-import ProtectedRoute from "./components/ui/ProtectedRoute";
-import Layout from "./components/ui/layout/Layout";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import Layout from "./components/layout/Layout";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -23,15 +23,29 @@ import FoldersPage from "./pages/FoldersPage";
 import FileManagerPage from "./pages/FileManagerPage";
 import JobTriggersPage from "./pages/JobTriggersPage";
 import JobHistoryPage from "./pages/JobHistoryPage";
+import { ROUTES } from "./config/constants";
 import "./index.css";
 
-// Create a client
+// Create a client with improved configuration
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: 1,
+      retry: (failureCount, error: any) => {
+        // Don't retry on 401/403 errors
+        if (
+          error?.response?.status === 401 ||
+          error?.response?.status === 403
+        ) {
+          return false;
+        }
+        return failureCount < 2;
+      },
       staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime)
+    },
+    mutations: {
+      retry: false,
     },
   },
 });
@@ -45,8 +59,8 @@ function App() {
             <div className="App">
               <Routes>
                 {/* Public routes */}
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
+                <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+                <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
 
                 {/* Protected routes */}
                 <Route
@@ -109,16 +123,16 @@ function App() {
 
                 {/* Default redirect */}
                 <Route
-                  path="/"
-                  element={<Navigate to="/dashboard" replace />}
+                  path={ROUTES.HOME}
+                  element={<Navigate to={ROUTES.DASHBOARD} replace />}
                 />
                 <Route
                   path="*"
-                  element={<Navigate to="/dashboard" replace />}
+                  element={<Navigate to={ROUTES.DASHBOARD} replace />}
                 />
               </Routes>
 
-              {/* Toast notifications */}
+              {/* Toast notifications with improved styling */}
               <Toaster
                 position="top-right"
                 toastOptions={{
@@ -126,6 +140,8 @@ function App() {
                   style: {
                     background: "var(--toast-bg)",
                     color: "var(--toast-color)",
+                    borderRadius: "8px",
+                    boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
                   },
                   success: {
                     duration: 3000,
@@ -138,6 +154,12 @@ function App() {
                     duration: 5000,
                     iconTheme: {
                       primary: "#EF4444",
+                      secondary: "#FFFFFF",
+                    },
+                  },
+                  loading: {
+                    iconTheme: {
+                      primary: "#3B82F6",
                       secondary: "#FFFFFF",
                     },
                   },

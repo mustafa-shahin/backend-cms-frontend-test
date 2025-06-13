@@ -1,14 +1,13 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import toast from "react-hot-toast";
-
-const API_BASE_URL = "http://localhost:5252/api";
+import { API_CONFIG, ENV } from "../config";
 
 class ApiService {
   private client: AxiosInstance;
 
   constructor() {
     this.client = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: API_CONFIG.BASE_URL,
       headers: {
         "Content-Type": "application/json",
       },
@@ -26,10 +25,12 @@ class ApiService {
           config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Log the request for debugging
-        console.log(
-          `🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`
-        );
+        // Log the request for debugging in development
+        if (ENV.IS_DEVELOPMENT) {
+          console.log(
+            `🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`
+          );
+        }
 
         return config;
       },
@@ -42,22 +43,26 @@ class ApiService {
     // Response interceptor to handle errors globally
     this.client.interceptors.response.use(
       (response: AxiosResponse) => {
-        console.log(
-          `✅ API Response: ${response.config.method?.toUpperCase()} ${
-            response.config.url
-          } - ${response.status}`
-        );
+        if (ENV.IS_DEVELOPMENT) {
+          console.log(
+            `✅ API Response: ${response.config.method?.toUpperCase()} ${
+              response.config.url
+            } - ${response.status}`
+          );
+        }
         return response;
       },
       async (error) => {
         const originalRequest = error.config;
 
-        console.error(
-          `❌ API Error: ${originalRequest?.method?.toUpperCase()} ${
-            originalRequest?.url
-          } - ${error.response?.status}`,
-          error.response?.data
-        );
+        if (ENV.IS_DEVELOPMENT) {
+          console.error(
+            `❌ API Error: ${originalRequest?.method?.toUpperCase()} ${
+              originalRequest?.url
+            } - ${error.response?.status}`,
+            error.response?.data
+          );
+        }
 
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
@@ -70,7 +75,6 @@ class ApiService {
             }
             return this.client(originalRequest);
           } catch (refreshError) {
-            // Refresh failed, redirect to login
             console.error("🔴 Token refresh failed, redirecting to login");
             localStorage.removeItem("accessToken");
             localStorage.removeItem("refreshToken");
@@ -87,10 +91,7 @@ class ApiService {
             "An error occurred";
 
           // Only show toast for non-404 errors or in production
-          if (
-            error.response?.status !== 404 ||
-            process.env.NODE_ENV === "production"
-          ) {
+          if (error.response?.status !== 404 || ENV.IS_PRODUCTION) {
             toast.error(message);
           }
         }
@@ -146,10 +147,18 @@ class ApiService {
   async uploadFile<T>(
     url: string,
     file: File,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    additionalData?: Record<string, string>
   ): Promise<T> {
     const formData = new FormData();
     formData.append("file", file);
+
+    // Add any additional form data
+    if (additionalData) {
+      Object.entries(additionalData).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+    }
 
     const config: AxiosRequestConfig = {
       headers: {
@@ -167,6 +176,13 @@ class ApiService {
 
     const response = await this.client.post<T>(url, formData, config);
     return response.data;
+  }
+
+  // Helper method to build download URLs with auth token
+  getDownloadUrl(path: string): string {
+    const token = localStorage.getItem("accessToken");
+    const baseUrl = API_CONFIG.BASE_URL;
+    return `${baseUrl}${path}?token=${encodeURIComponent(token || "")}`;
   }
 }
 

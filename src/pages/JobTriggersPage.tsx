@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { apiService } from "../Services/ApiServices";
-import Button from "../components/ui/Button";
-import Icon from "../components/ui/Icon";
-import Modal from "../components/ui/Modal";
-import Form from "../components/ui/Form";
+import Button from "../components/common/Button";
+import Icon from "../components/common/Icon";
+import Modal from "../components/common/Modal";
+import Form from "../components/common/Form";
 import toast from "react-hot-toast";
 
 interface TriggerJobResponse {

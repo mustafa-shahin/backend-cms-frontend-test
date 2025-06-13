@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../Context/AuthContext";
 import { apiService } from "../Services/ApiServices";
-import Icon from "../components/ui/Icon";
+import { Icon } from "../components/common";
+import { ROUTES } from "../config/constants";
 
 interface DashboardStats {
   users: number;
@@ -30,26 +31,62 @@ const DashboardPage: React.FC = () => {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
-      // In a real app, you'd have a dedicated dashboard stats endpoint
+
+      // Use singular endpoints as per your backend API
       const [usersResponse, pagesResponse, filesResponse, foldersResponse] =
         await Promise.allSettled([
-          apiService.get<any[]>("/users"),
-          apiService.get<any[]>("/pages"),
-          apiService.get<any[]>("/files"),
-          apiService.get<any[]>("/folders"),
+          apiService.get<any>("/user"), // Changed from /users to /user
+          apiService.get<any>("/page"), // Changed from /pages to /page
+          apiService.get<any>("/file"), // Changed from /files to /file
+          apiService.get<any>("/folder"), // Changed from /folders to /folder
         ]);
 
+      // Handle different response formats (single entity vs array vs paged result)
+      const getUserCount = () => {
+        if (usersResponse.status === "fulfilled") {
+          const data = usersResponse.value;
+          if (Array.isArray(data)) return data.length;
+          if (data?.items) return data.totalCount || data.items.length;
+          if (data?.id) return 1; // Single user entity
+        }
+        return 0;
+      };
+
+      const getPageCount = () => {
+        if (pagesResponse.status === "fulfilled") {
+          const data = pagesResponse.value;
+          if (Array.isArray(data)) return data.length;
+          if (data?.items) return data.totalCount || data.items.length;
+          if (data?.id) return 1; // Single page entity
+        }
+        return 0;
+      };
+
+      const getFileCount = () => {
+        if (filesResponse.status === "fulfilled") {
+          const data = filesResponse.value;
+          if (Array.isArray(data)) return data.length;
+          if (data?.items) return data.totalCount || data.items.length;
+          if (data?.id) return 1; // Single file entity
+        }
+        return 0;
+      };
+
+      const getFolderCount = () => {
+        if (foldersResponse.status === "fulfilled") {
+          const data = foldersResponse.value;
+          if (Array.isArray(data)) return data.length;
+          if (data?.items) return data.totalCount || data.items.length;
+          if (data?.id) return 1; // Single folder entity
+        }
+        return 0;
+      };
+
       setStats({
-        users:
-          usersResponse.status === "fulfilled" ? usersResponse.value.length : 0,
-        pages:
-          pagesResponse.status === "fulfilled" ? pagesResponse.value.length : 0,
-        files:
-          filesResponse.status === "fulfilled" ? filesResponse.value.length : 0,
-        folders:
-          foldersResponse.status === "fulfilled"
-            ? foldersResponse.value.length
-            : 0,
+        users: getUserCount(),
+        pages: getPageCount(),
+        files: getFileCount(),
+        folders: getFolderCount(),
         recentActivity: [
           {
             id: "1",
@@ -76,6 +113,14 @@ const DashboardPage: React.FC = () => {
       });
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
+      // Set default stats if API calls fail
+      setStats({
+        users: 0,
+        pages: 0,
+        files: 0,
+        folders: 0,
+        recentActivity: [],
+      });
     } finally {
       setLoading(false);
     }
@@ -88,7 +133,7 @@ const DashboardPage: React.FC = () => {
       icon: "users" as const,
       color: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-100 dark:bg-blue-900/20",
-      href: "/dashboard/users",
+      href: ROUTES.USERS,
     },
     {
       name: "Total Pages",
@@ -96,7 +141,7 @@ const DashboardPage: React.FC = () => {
       icon: "file-text" as const,
       color: "text-green-600 dark:text-green-400",
       bgColor: "bg-green-100 dark:bg-green-900/20",
-      href: "/dashboard/pages",
+      href: ROUTES.PAGES,
     },
     {
       name: "Total Files",
@@ -104,7 +149,7 @@ const DashboardPage: React.FC = () => {
       icon: "file" as const,
       color: "text-purple-600 dark:text-purple-400",
       bgColor: "bg-purple-100 dark:bg-purple-900/20",
-      href: "/dashboard/files",
+      href: ROUTES.FILES,
     },
     {
       name: "Total Folders",
@@ -112,7 +157,7 @@ const DashboardPage: React.FC = () => {
       icon: "folder" as const,
       color: "text-orange-600 dark:text-orange-400",
       bgColor: "bg-orange-100 dark:bg-orange-900/20",
-      href: "/dashboard/files/folders",
+      href: ROUTES.FILES_FOLDERS,
     },
   ];
 
@@ -255,28 +300,28 @@ const DashboardPage: React.FC = () => {
             </h3>
             <div className="space-y-3">
               <Link
-                to="/dashboard/users"
+                to={ROUTES.USERS}
                 className="w-full flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <Icon name="user-plus" className="mr-3 h-4 w-4" />
                 Create New User
               </Link>
               <Link
-                to="/dashboard/pages"
+                to={ROUTES.PAGES}
                 className="w-full flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <Icon name="plus" className="mr-3 h-4 w-4" />
                 Create New Page
               </Link>
               <Link
-                to="/dashboard/files"
+                to={ROUTES.FILES}
                 className="w-full flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <Icon name="upload" className="mr-3 h-4 w-4" />
                 Upload Files
               </Link>
               <Link
-                to="/dashboard/jobs/triggers"
+                to={ROUTES.JOBS_TRIGGERS}
                 className="w-full flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <Icon name="play" className="mr-3 h-4 w-4" />

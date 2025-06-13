@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { TableColumn, TableAction, FormField, PagedResult } from "../../types";
-import Table from "./Tabble";
-import Modal from "./Modal";
-import Form from "./Form";
-import Button from "./Button";
-import Icon from "./Icon";
+import { TableColumn, TableAction, FormField } from "../../types/entities";
+import { PagedResult } from "../../types/api";
+import Table from "../common/Table";
+import Modal from "../common/Modal";
+import Form from "../common/Form";
+import Button from "../common/Button";
+import Icon from "../common/Icon";
 import { apiService } from "../../Services/ApiServices";
 import toast from "react-hot-toast";
 
 export interface EntityManagerConfig<T> {
   entityName: string;
-  entityNamePlural: string;
   apiEndpoint: string;
   columns: TableColumn<T>[];
   formFields: FormField[];
@@ -54,7 +54,6 @@ function EntityManager<T extends { id: number | string }>({
 
   const {
     entityName,
-    entityNamePlural,
     apiEndpoint,
     columns,
     formFields,
@@ -78,11 +77,21 @@ function EntityManager<T extends { id: number | string }>({
     transformDataForApi,
   } = config;
 
+  // Generate plural form automatically
+  const entityNamePlural = entityName.endsWith("y")
+    ? entityName.slice(0, -1) + "ies"
+    : entityName.endsWith("s") ||
+      entityName.endsWith("sh") ||
+      entityName.endsWith("ch") ||
+      entityName.endsWith("x") ||
+      entityName.endsWith("z")
+    ? entityName + "es"
+    : entityName + "s";
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Build query parameters
       const params = new URLSearchParams({
         page: currentPage.toString(),
         pageSize: pageSize.toString(),
@@ -93,7 +102,6 @@ function EntityManager<T extends { id: number | string }>({
       }
 
       try {
-        // Try to fetch as paged result first
         const result = await apiService.get<PagedResult<T>>(
           `${apiEndpoint}?${params.toString()}`
         );
@@ -101,7 +109,6 @@ function EntityManager<T extends { id: number | string }>({
         setData(result.items || []);
         setTotalCount(result.totalCount || 0);
       } catch (error: any) {
-        // If paged result fails, try to fetch as simple array (for single entities like Company)
         if (error.response?.status === 404 || !searchTerm) {
           try {
             const result = await apiService.get<T[]>(apiEndpoint);
@@ -109,7 +116,6 @@ function EntityManager<T extends { id: number | string }>({
             setData(resultArray);
             setTotalCount(resultArray.length);
           } catch (singleError) {
-            // If that also fails, try to get single entity
             try {
               const singleResult = await apiService.get<T>(apiEndpoint);
               setData(singleResult ? [singleResult] : []);
@@ -166,7 +172,6 @@ function EntityManager<T extends { id: number | string }>({
 
     try {
       await apiService.delete(`${apiEndpoint}/${entity.id}`);
-      // Refresh the current page
       await fetchData();
       toast.success(`${entityName} deleted successfully`);
 
@@ -189,7 +194,6 @@ function EntityManager<T extends { id: number | string }>({
       }
 
       if (editingEntity) {
-        // Update existing entity
         if (onBeforeUpdate) {
           processedData = onBeforeUpdate(processedData, editingEntity);
         }
@@ -199,7 +203,6 @@ function EntityManager<T extends { id: number | string }>({
           processedData
         );
 
-        // Refresh the data
         await fetchData();
         toast.success(`${entityName} updated successfully`);
 
@@ -207,14 +210,12 @@ function EntityManager<T extends { id: number | string }>({
           onAfterUpdate(processedData, result);
         }
       } else {
-        // Create new entity
         if (onBeforeCreate) {
           processedData = onBeforeCreate(processedData);
         }
 
         const result = await apiService.post<T>(apiEndpoint, processedData);
 
-        // Refresh the data
         await fetchData();
         toast.success(`${entityName} created successfully`);
 
@@ -246,14 +247,13 @@ function EntityManager<T extends { id: number | string }>({
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  // Build table actions
   const tableActions: TableAction<T>[] = [
     ...(canView
       ? [
