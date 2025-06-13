@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import clsx from "clsx";
 import { FormField } from "../../types";
@@ -32,12 +32,20 @@ const Form: React.FC<FormProps> = ({
     control,
     handleSubmit,
     formState: { errors },
-    watch,
-    setValue,
+    reset, // Add reset function
   } = useForm({
     defaultValues,
   });
 
+  // Add useEffect to handle defaultValues changes
+  useEffect(() => {
+    console.log("Form defaultValues changed:", defaultValues);
+    if (defaultValues && Object.keys(defaultValues).length > 0) {
+      reset(defaultValues);
+    }
+  }, [defaultValues, reset]);
+
+  // Rest of your existing Form component code...
   const renderField = (field: FormField) => {
     const hasError = errors[field.name];
     const baseInputClasses = clsx(

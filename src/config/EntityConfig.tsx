@@ -9,67 +9,66 @@ import {
   UserRole,
   PageStatus,
   FolderType,
-  Address,
-  ContactDetails,
+  FileType,
 } from "../types/entities";
 import { EntityManagerConfig } from "../components/entities/EntityManager";
 import { format } from "date-fns";
 
-// Helper function to create address fields
-const createAddressFields = (prefix: string = "addresses[0]") => [
+// Helper function to create address fields with proper nested naming
+const createAddressFields = () => [
   {
-    name: `${prefix}.street`,
+    name: "addresses.0.street",
     label: "Street Address",
     type: "text" as const,
     required: true,
     validation: { required: "Street address is required" },
   },
   {
-    name: `${prefix}.street2`,
+    name: "addresses.0.street2",
     label: "Street Address 2",
     type: "text" as const,
     placeholder: "Apartment, suite, etc.",
   },
   {
-    name: `${prefix}.city`,
+    name: "addresses.0.city",
     label: "City",
     type: "text" as const,
     required: true,
     validation: { required: "City is required" },
   },
   {
-    name: `${prefix}.state`,
+    name: "addresses.0.state",
     label: "State/Province",
     type: "text" as const,
     required: true,
     validation: { required: "State/Province is required" },
   },
   {
-    name: `${prefix}.country`,
+    name: "addresses.0.country",
     label: "Country",
     type: "text" as const,
     required: true,
     validation: { required: "Country is required" },
   },
   {
-    name: `${prefix}.postalCode`,
+    name: "addresses.0.postalCode",
     label: "Postal Code",
     type: "text" as const,
     required: true,
     validation: { required: "Postal code is required" },
   },
   {
-    name: `${prefix}.region`,
+    name: "addresses.0.region",
     label: "Region",
     type: "text" as const,
   },
   {
-    name: `${prefix}.district`,
+    name: "addresses.0.district",
     label: "District",
     type: "text" as const,
   },
   {
-    name: `${prefix}.addressType`,
+    name: "addresses.0.addressType",
     label: "Address Type",
     type: "select" as const,
     options: [
@@ -82,46 +81,46 @@ const createAddressFields = (prefix: string = "addresses[0]") => [
     ],
   },
   {
-    name: `${prefix}.isDefault`,
+    name: "addresses.0.isDefault",
     label: "Default Address",
     type: "checkbox" as const,
   },
   {
-    name: `${prefix}.notes`,
+    name: "addresses.0.notes",
     label: "Address Notes",
     type: "textarea" as const,
     rows: 2,
   },
 ];
 
-// Helper function to create contact details fields
-const createContactDetailsFields = (prefix: string = "contactDetails[0]") => [
+// Helper function to create contact details fields with proper nested naming
+const createContactDetailsFields = () => [
   {
-    name: `${prefix}.primaryPhone`,
+    name: "contactDetails.0.primaryPhone",
     label: "Primary Phone",
     type: "text" as const,
     placeholder: "+1 (555) 123-4567",
   },
   {
-    name: `${prefix}.secondaryPhone`,
+    name: "contactDetails.0.secondaryPhone",
     label: "Secondary Phone",
     type: "text" as const,
     placeholder: "+1 (555) 123-4567",
   },
   {
-    name: `${prefix}.mobile`,
+    name: "contactDetails.0.mobile",
     label: "Mobile Phone",
     type: "text" as const,
     placeholder: "+1 (555) 123-4567",
   },
   {
-    name: `${prefix}.fax`,
+    name: "contactDetails.0.fax",
     label: "Fax",
     type: "text" as const,
     placeholder: "+1 (555) 123-4567",
   },
   {
-    name: `${prefix}.email`,
+    name: "contactDetails.0.email",
     label: "Contact Email",
     type: "email" as const,
     validation: {
@@ -132,7 +131,7 @@ const createContactDetailsFields = (prefix: string = "contactDetails[0]") => [
     },
   },
   {
-    name: `${prefix}.secondaryEmail`,
+    name: "contactDetails.0.secondaryEmail",
     label: "Secondary Email",
     type: "email" as const,
     validation: {
@@ -143,49 +142,49 @@ const createContactDetailsFields = (prefix: string = "contactDetails[0]") => [
     },
   },
   {
-    name: `${prefix}.website`,
+    name: "contactDetails.0.website",
     label: "Website",
     type: "text" as const,
     placeholder: "https://example.com",
   },
   {
-    name: `${prefix}.linkedInProfile`,
+    name: "contactDetails.0.linkedInProfile",
     label: "LinkedIn Profile",
     type: "text" as const,
     placeholder: "https://linkedin.com/in/username",
   },
   {
-    name: `${prefix}.twitterProfile`,
+    name: "contactDetails.0.twitterProfile",
     label: "Twitter Profile",
     type: "text" as const,
     placeholder: "https://twitter.com/username",
   },
   {
-    name: `${prefix}.facebookProfile`,
+    name: "contactDetails.0.facebookProfile",
     label: "Facebook Profile",
     type: "text" as const,
     placeholder: "https://facebook.com/username",
   },
   {
-    name: `${prefix}.instagramProfile`,
+    name: "contactDetails.0.instagramProfile",
     label: "Instagram Profile",
     type: "text" as const,
     placeholder: "https://instagram.com/username",
   },
   {
-    name: `${prefix}.whatsAppNumber`,
+    name: "contactDetails.0.whatsAppNumber",
     label: "WhatsApp Number",
     type: "text" as const,
     placeholder: "+1 (555) 123-4567",
   },
   {
-    name: `${prefix}.telegramHandle`,
+    name: "contactDetails.0.telegramHandle",
     label: "Telegram Handle",
     type: "text" as const,
     placeholder: "@username",
   },
   {
-    name: `${prefix}.contactType`,
+    name: "contactDetails.0.contactType",
     label: "Contact Type",
     type: "select" as const,
     options: [
@@ -196,11 +195,101 @@ const createContactDetailsFields = (prefix: string = "contactDetails[0]") => [
     ],
   },
   {
-    name: `${prefix}.isDefault`,
+    name: "contactDetails.0.isDefault",
     label: "Default Contact",
     type: "checkbox" as const,
   },
 ];
+
+// Transform functions for proper nested data structure
+const transformDataForForm = (data: any) => {
+  console.log("=== TRANSFORM FOR FORM ===");
+  console.log("Original data:", data);
+
+  const transformed = {
+    ...data,
+    addresses:
+      data.addresses?.length > 0
+        ? data.addresses.map((addr: any) => ({
+            ...addr,
+            // Convert null values to empty strings for text inputs
+            street: addr.street || "",
+            street2: addr.street2 || "",
+            city: addr.city || "",
+            state: addr.state || "",
+            country: addr.country || "",
+            postalCode: addr.postalCode || "",
+            region: addr.region || "",
+            district: addr.district || "",
+            addressType: addr.addressType || "",
+            notes: addr.notes || "",
+            isDefault: addr.isDefault || false,
+          }))
+        : [{}],
+    contactDetails:
+      data.contactDetails?.length > 0
+        ? data.contactDetails.map((contact: any) => ({
+            ...contact,
+            // Convert null values to empty strings for text inputs
+            primaryPhone: contact.primaryPhone || "",
+            secondaryPhone: contact.secondaryPhone || "",
+            mobile: contact.mobile || "",
+            fax: contact.fax || "",
+            email: contact.email || "",
+            secondaryEmail: contact.secondaryEmail || "",
+            website: contact.website || "",
+            linkedInProfile: contact.linkedInProfile || "",
+            twitterProfile: contact.twitterProfile || "",
+            facebookProfile: contact.facebookProfile || "",
+            instagramProfile: contact.instagramProfile || "",
+            whatsAppNumber: contact.whatsAppNumber || "",
+            telegramHandle: contact.telegramHandle || "",
+            contactType: contact.contactType || "",
+            isDefault: contact.isDefault || false,
+            additionalContacts: contact.additionalContacts || {},
+          }))
+        : [{}],
+  };
+
+  console.log("Transformed data:", transformed);
+  console.log("Addresses in transformed:", transformed.addresses);
+  console.log("Contact details in transformed:", transformed.contactDetails);
+  console.log("=== END TRANSFORM ===");
+
+  return transformed;
+};
+
+const transformDataForApi = (data: any) => {
+  console.log("=== TRANSFORM FOR API ===");
+  console.log("Form data:", data);
+
+  const transformed = { ...data };
+
+  // Clean up addresses - remove empty ones
+  if (transformed.addresses) {
+    transformed.addresses = transformed.addresses.filter(
+      (addr: any) => addr.street || addr.city || addr.state || addr.country
+    );
+    if (transformed.addresses.length === 0) {
+      delete transformed.addresses;
+    }
+  }
+
+  // Clean up contact details - remove empty ones
+  if (transformed.contactDetails) {
+    transformed.contactDetails = transformed.contactDetails.filter(
+      (contact: any) => contact.primaryPhone || contact.email || contact.website
+    );
+    if (transformed.contactDetails.length === 0) {
+      delete transformed.contactDetails;
+    }
+  }
+
+  console.log("API data:", transformed);
+  console.log("=== END API TRANSFORM ===");
+
+  return transformed;
+};
 
 export const userEntityConfig: EntityManagerConfig<User> = {
   entityName: "User",
@@ -324,36 +413,13 @@ export const userEntityConfig: EntityManagerConfig<User> = {
     },
 
     // Address Fields
-    ...createAddressFields("addresses[0]"),
+    ...createAddressFields(),
 
     // Contact Details Fields
-    ...createContactDetailsFields("contactDetails[0]"),
+    ...createContactDetailsFields(),
   ],
-  transformDataForForm: (user) => ({
-    ...user,
-    addresses: user.addresses?.length > 0 ? user.addresses : [{}],
-    contactDetails:
-      user.contactDetails?.length > 0 ? user.contactDetails : [{}],
-  }),
-  transformDataForApi: (data) => {
-    const transformed = { ...data };
-
-    if (transformed.addresses) {
-      transformed.addresses = transformed.addresses.filter(
-        (addr: Address) =>
-          addr.street || addr.city || addr.state || addr.country
-      );
-    }
-
-    if (transformed.contactDetails) {
-      transformed.contactDetails = transformed.contactDetails.filter(
-        (contact: ContactDetails) =>
-          contact.primaryPhone || contact.email || contact.website
-      );
-    }
-
-    return transformed;
-  },
+  transformDataForForm,
+  transformDataForApi,
 };
 
 export const companyEntityConfig: EntityManagerConfig<Company> = {
@@ -466,34 +532,14 @@ export const companyEntityConfig: EntityManagerConfig<Company> = {
       ],
     },
 
-    ...createAddressFields("addresses[0]"),
-    ...createContactDetailsFields("contactDetails[0]"),
+    // Address Fields
+    ...createAddressFields(),
+
+    // Contact Details Fields
+    ...createContactDetailsFields(),
   ],
-  transformDataForForm: (company) => ({
-    ...company,
-    addresses: company.addresses?.length > 0 ? company.addresses : [{}],
-    contactDetails:
-      company.contactDetails?.length > 0 ? company.contactDetails : [{}],
-  }),
-  transformDataForApi: (data) => {
-    const transformed = { ...data };
-
-    if (transformed.addresses) {
-      transformed.addresses = transformed.addresses.filter(
-        (addr: Address) =>
-          addr.street || addr.city || addr.state || addr.country
-      );
-    }
-
-    if (transformed.contactDetails) {
-      transformed.contactDetails = transformed.contactDetails.filter(
-        (contact: ContactDetails) =>
-          contact.primaryPhone || contact.email || contact.website
-      );
-    }
-
-    return transformed;
-  },
+  transformDataForForm,
+  transformDataForApi,
 };
 
 export const locationEntityConfig: EntityManagerConfig<Location> = {
@@ -583,34 +629,14 @@ export const locationEntityConfig: EntityManagerConfig<Location> = {
       type: "checkbox",
     },
 
-    ...createAddressFields("addresses[0]"),
-    ...createContactDetailsFields("contactDetails[0]"),
+    // Address Fields
+    ...createAddressFields(),
+
+    // Contact Details Fields
+    ...createContactDetailsFields(),
   ],
-  transformDataForForm: (location) => ({
-    ...location,
-    addresses: location.addresses?.length > 0 ? location.addresses : [{}],
-    contactDetails:
-      location.contactDetails?.length > 0 ? location.contactDetails : [{}],
-  }),
-  transformDataForApi: (data) => {
-    const transformed = { ...data };
-
-    if (transformed.addresses) {
-      transformed.addresses = transformed.addresses.filter(
-        (addr: Address) =>
-          addr.street || addr.city || addr.state || addr.country
-      );
-    }
-
-    if (transformed.contactDetails) {
-      transformed.contactDetails = transformed.contactDetails.filter(
-        (contact: ContactDetails) =>
-          contact.primaryPhone || contact.email || contact.website
-      );
-    }
-
-    return transformed;
-  },
+  transformDataForForm,
+  transformDataForApi,
 };
 
 export const fileEntityConfig: EntityManagerConfig<FileEntity> = {
@@ -624,7 +650,7 @@ export const fileEntityConfig: EntityManagerConfig<FileEntity> = {
       render: (fileName, file) => (
         <div className="flex items-center">
           <div className="flex-shrink-0 h-8 w-8">
-            {file.fileType === 1 ? (
+            {file.fileType === FileType.Image ? (
               file.thumbnailUrl ? (
                 <img
                   src={file.thumbnailUrl}

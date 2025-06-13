@@ -235,13 +235,20 @@ function EntityManager<T extends { id: number | string }>({
 
   const getDefaultFormValues = () => {
     if (!editingEntity) {
+      console.log("No editing entity, returning empty object");
       return {};
     }
 
+    console.log("Editing entity:", editingEntity);
+
     if (transformDataForForm) {
-      return transformDataForForm(editingEntity);
+      console.log("Transform function exists, calling it...");
+      const transformed = transformDataForForm(editingEntity);
+      console.log("Transformed data:", transformed);
+      return transformed;
     }
 
+    console.log("No transform function, returning entity as-is");
     return editingEntity;
   };
 
