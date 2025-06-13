@@ -65,7 +65,6 @@ const FilesGridView: React.FC<FilesGridViewProps> = ({
   };
 
   const getThumbnailUrl = (file: FileEntity) => {
-    let test = FileType.Image.toString();
     if (file.fileType === FileType.Image && file.id) {
       return apiService.getDownloadUrl(`/file/${file.id}/thumbnail`);
     }
