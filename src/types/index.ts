@@ -68,7 +68,7 @@ export interface FileEntity extends BaseEntity {
   processingStatus?: string;
   tags: Record<string, any>;
 
-  // Computed properties (added by DTOs/services)
+  // Computed properties
   fileSizeFormatted?: string;
   fileUrl?: string;
   thumbnailUrl?: string;
