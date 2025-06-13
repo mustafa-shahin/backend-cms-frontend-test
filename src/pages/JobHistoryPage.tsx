@@ -5,40 +5,11 @@ import Icon from "../components/common/Icon";
 import Modal from "../components/common/Modal";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
-
-interface IndexingJob {
-  id: number;
-  jobType: string;
-  status: string;
-  startedAt: string;
-  completedAt?: string;
-  totalEntities: number;
-  processedEntities: number;
-  failedEntities: number;
-  errorMessage?: string;
-  duration?: string;
-  progressPercentage: number;
-}
-
-interface IndexingJobDetail extends IndexingJob {
-  jobMetadata: Record<string, any>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface IndexingJobStatistics {
-  totalJobs: number;
-  runningJobs: number;
-  completedJobs: number;
-  failedJobs: number;
-  jobsLast24Hours: number;
-  jobsLast7Days: number;
-  jobsLast30Days: number;
-  lastFullIndex?: string;
-  lastIncrementalIndex?: string;
-  averageJobDuration?: string;
-  jobTypeBreakdown: Record<string, number>;
-}
+import {
+  IndexingJobStatistics,
+  IndexingJobDetail,
+  IndexingJob,
+} from "../types";
 
 const JobHistoryPage: React.FC = () => {
   const [jobs, setJobs] = useState<IndexingJob[]>([]);

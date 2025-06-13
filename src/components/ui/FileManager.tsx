@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { FileEntity, Folder, PagedResult } from "../../types";
+import { PagedResult } from "../../types";
+import { FileEntity } from "../../types/FileEntity";
+import { Folder } from "../../types/Folder";
 import { apiService } from "../../Services/ApiServices";
 import { Button, Icon, Modal, Form } from "../common";
 import FilesGridView from "./FilesGridView";

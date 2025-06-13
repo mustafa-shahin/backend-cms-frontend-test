@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { FileEntity, FileType, TableAction } from "../types/entities";
+import { TableAction } from "../types";
 import { PagedResult } from "../types/api";
 import { fileEntityConfig } from "../config/EntityConfig";
 import { apiService } from "../Services/ApiServices";
@@ -11,7 +11,8 @@ import Form from "../components/common/Form";
 import Button from "../components/common/Button";
 import Icon from "../components/common/Icon";
 import toast from "react-hot-toast";
-
+import { FileType } from "../types/enums";
+import { FileEntity } from "../types/FileEntity";
 interface FilesPageProps {
   filterType?: "documents" | "images" | "videos" | "audio" | "archives";
 }
@@ -24,7 +25,7 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [editingFile, setEditingFile] = useState<FileEntity | null>(null);
   const [previewFile, setPreviewFile] = useState<FileEntity | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
     {}
   );

@@ -1,20 +1,12 @@
-import React from "react";
-import {
-  User,
-  Page,
-  Location,
-  FileEntity,
-  Folder,
-  Company,
-  UserRole,
-  PageStatus,
-  FolderType,
-  FileType,
-} from "../types/entities";
+import { User } from "../types/User";
+import { Page } from "../types/Page";
+import { Company } from "../types/Company";
+import { FileEntity } from "../types/FileEntity";
+import { Folder } from "../types/Folder";
+import { Location } from "../types/Location";
 import { EntityManagerConfig } from "../components/entities/EntityManager";
 import { format } from "date-fns";
-
-// Helper function to create address fields with proper nested naming
+import { FileType, FolderType, PageStatus, UserRole } from "../types/enums";
 const createAddressFields = () => [
   {
     name: "addresses.0.street",

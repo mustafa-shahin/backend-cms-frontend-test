@@ -1,9 +1,10 @@
 import React from "react";
-import { FileEntity, FileType } from "../../types/entities";
+import { FileEntity } from "../../types/FileEntity";
 import Button from "../common/Button";
 import Icon from "../common/Icon";
 import { apiService } from "../../Services/ApiServices";
 import { formatDate } from "../../utils";
+import { FileType } from "../../types/enums";
 interface FilesGridViewProps {
   files: FileEntity[];
   loading: boolean;
