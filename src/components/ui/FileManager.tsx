@@ -1,15 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { FileEntity, Folder } from "../../types/entities";
-import { PagedResult } from "../../types/api";
+import { FileEntity, Folder, PagedResult } from "../../types";
 import { apiService } from "../../Services/ApiServices";
-import Button from "../common/Button";
-import Icon from "../common/Icon";
-import Modal from "../common/Modal";
-import Form from "../common/Form";
+import { Button, Icon, Modal, Form } from "../common";
 import FilesGridView from "./FilesGridView";
 import toast from "react-hot-toast";
-import { format } from "date-fns";
 
 interface FileManagerProps {
   initialFolderId?: number;
@@ -24,7 +19,7 @@ const FileManager: React.FC<FileManagerProps> = ({ initialFolderId }) => {
   const [files, setFiles] = useState<FileEntity[]>([]);
   const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [, setUploading] = useState(false);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [editingFile, setEditingFile] = useState<FileEntity | null>(null);
@@ -159,30 +154,26 @@ const FileManager: React.FC<FileManagerProps> = ({ initialFolderId }) => {
 
       for (const file of acceptedFiles) {
         try {
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("isPublic", "true");
-          formData.append("generateThumbnail", "true");
+          const additionalData: Record<string, string> = {
+            isPublic: "true",
+            generateThumbnail: "true",
+          };
+
           if (currentFolderId) {
-            formData.append("folderId", currentFolderId.toString());
+            additionalData.folderId = currentFolderId.toString();
           }
 
-          await apiService.post<FileEntity>("/file/upload", formData, {
-            headers: {
-              "Content-Type": "multipart/form-data",
+          await apiService.uploadFile<FileEntity>(
+            "/file/upload",
+            file,
+            (progress) => {
+              setUploadProgress((prev) => ({
+                ...prev,
+                [file.name]: progress,
+              }));
             },
-            onUploadProgress: (progressEvent) => {
-              if (progressEvent.total) {
-                const progress = Math.round(
-                  (progressEvent.loaded * 100) / progressEvent.total
-                );
-                setUploadProgress((prev) => ({
-                  ...prev,
-                  [file.name]: progress,
-                }));
-              }
-            },
-          });
+            additionalData
+          );
 
           toast.success(`${file.name} uploaded successfully`);
         } catch (error) {
@@ -234,10 +225,7 @@ const FileManager: React.FC<FileManagerProps> = ({ initialFolderId }) => {
   };
 
   const handleDownloadFile = (file: FileEntity) => {
-    const token = localStorage.getItem("accessToken");
-    const downloadUrl = `${
-      process.env.REACT_APP_API_URL || "http://localhost:5252/api"
-    }/file/${file.id}/download?token=${encodeURIComponent(token || "")}`;
+    const downloadUrl = apiService.getDownloadUrl(`/file/${file.id}/download`);
 
     const link = document.createElement("a");
     link.href = downloadUrl;
@@ -461,7 +449,7 @@ const FileManager: React.FC<FileManagerProps> = ({ initialFolderId }) => {
                           size="xs"
                           variant="ghost"
                           leftIcon="trash"
-                          onClick={(e: React.MouseEvent) => {
+                          onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteFolder(folder);
                           }}

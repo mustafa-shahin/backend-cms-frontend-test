@@ -657,21 +657,7 @@ export const fileEntityConfig: EntityManagerConfig<FileEntity> = {
         </div>
       ),
     },
-    {
-      key: "fileType",
-      label: "Type",
-      render: (type) => {
-        const typeNames = [
-          "Document",
-          "Image",
-          "Video",
-          "Audio",
-          "Archive",
-          "Other",
-        ];
-        return typeNames[type] || "Unknown";
-      },
-    },
+
     {
       key: "isPublic",
       label: "Visibility",

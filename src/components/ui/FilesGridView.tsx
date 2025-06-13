@@ -2,7 +2,16 @@ import React from "react";
 import { FileEntity, FileType } from "../../types/entities";
 import Button from "../common/Button";
 import Icon from "../common/Icon";
-import { format } from "date-fns";
+import { apiService } from "../../Services/ApiServices";
+import { formatDate } from "../../utils";
+interface FilesGridViewProps {
+  files: FileEntity[];
+  loading: boolean;
+  onEdit: (file: FileEntity) => void;
+  onDelete: (file: FileEntity) => void;
+  onDownload: (file: FileEntity) => void;
+  onPreview?: (file: FileEntity) => void;
+}
 
 interface FilesGridViewProps {
   files: FileEntity[];
@@ -56,20 +65,16 @@ const FilesGridView: React.FC<FilesGridViewProps> = ({
   };
 
   const getThumbnailUrl = (file: FileEntity) => {
-    // Fix the thumbnail URL to use the correct API endpoint
+    let test = FileType.Image.toString();
     if (file.fileType === FileType.Image && file.id) {
-      return `${
-        process.env.REACT_APP_API_URL || "http://localhost:5252/api"
-      }/file/${file.id}/thumbnail`;
+      return apiService.getDownloadUrl(`/file/${file.id}/thumbnail`);
     }
     return null;
   };
 
   const getFileUrl = (file: FileEntity) => {
-    // Fix the file download URL
-    return `${
-      process.env.REACT_APP_API_URL || "http://localhost:5252/api"
-    }/file/${file.id}/download`;
+    // Use the centralized API service to build the download URL
+    return apiService.getDownloadUrl(`/file/${file.id}/download`);
   };
 
   if (loading) {
@@ -116,33 +121,47 @@ const FilesGridView: React.FC<FilesGridViewProps> = ({
             {/* File Preview/Thumbnail */}
             <div className="relative h-32 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
               {thumbnailUrl ? (
-                <img
-                  src={thumbnailUrl}
-                  alt={file.alt || file.originalFileName}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    // Fallback to icon if thumbnail fails to load
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = "none";
-                    const fallback = target.nextElementSibling as HTMLElement;
-                    if (fallback) fallback.style.display = "flex";
-                  }}
-                />
-              ) : null}
-
-              {/* Fallback icon */}
-              <div
-                className={`w-full h-full flex items-center justify-center ${
-                  thumbnailUrl ? "hidden" : "flex"
-                }`}
-                style={{ display: thumbnailUrl ? "none" : "flex" }}
-              >
-                <Icon
-                  name={getFileIcon(file)}
-                  size="2xl"
-                  className={getFileTypeColor(file.fileType)}
-                />
-              </div>
+                <>
+                  <img
+                    src={thumbnailUrl}
+                    alt={file.alt || file.originalFileName}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to icon if thumbnail fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                      const fallback = target.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = "flex";
+                    }}
+                    onLoad={(e) => {
+                      // Hide fallback if image loads successfully
+                      const target = e.target as HTMLImageElement;
+                      const fallback = target.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = "none";
+                    }}
+                  />
+                  {/* Fallback icon - initially hidden */}
+                  <div
+                    className="w-full h-full flex items-center justify-center"
+                    style={{ display: "none" }}
+                  >
+                    <Icon
+                      name={getFileIcon(file)}
+                      size="2xl"
+                      className={getFileTypeColor(file.fileType)}
+                    />
+                  </div>
+                </>
+              ) : (
+                /* Icon for non-images */
+                <div className="w-full h-full flex items-center justify-center">
+                  <Icon
+                    name={getFileIcon(file)}
+                    size="2xl"
+                    className={getFileTypeColor(file.fileType)}
+                  />
+                </div>
+              )}
 
               {/* File type badge */}
               <div className="absolute top-2 left-2">
@@ -199,7 +218,7 @@ const FilesGridView: React.FC<FilesGridViewProps> = ({
               </h4>
               <div className="mt-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>{file.fileSizeFormatted}</span>
-                <span>{format(new Date(file.createdAt), "MMM dd")}</span>
+                <span>{formatDate(file.createdAt)}</span>
               </div>
 
               {file.description && (
