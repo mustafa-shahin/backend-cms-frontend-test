@@ -24,6 +24,9 @@ import FileManagerPage from "./pages/FileManagerPage";
 import JobTriggersPage from "./pages/JobTriggersPage";
 import JobHistoryPage from "./pages/JobHistoryPage";
 import { ROUTES } from "./config/constants";
+import ProductsPage from "./pages/ProductsPage";
+import CategoriesPage from "./pages/CategoriesPage";
+import ProductVariantsPage from "./pages/ProductVariantsPage";
 import "./index.css";
 
 // Create a client with improved configuration
@@ -114,6 +117,22 @@ function App() {
                           <Route
                             path="jobs/history"
                             element={<JobHistoryPage />}
+                          />
+                          <Route
+                            path="products/list"
+                            element={<ProductsPage />}
+                          />
+                          <Route
+                            path="products/categories"
+                            element={<CategoriesPage />}
+                          />
+                          <Route
+                            path="products/variants"
+                            element={<ProductVariantsPage />}
+                          />
+                          <Route
+                            path="products"
+                            element={<Navigate to="products/list" replace />}
                           />
                         </Routes>
                       </Layout>

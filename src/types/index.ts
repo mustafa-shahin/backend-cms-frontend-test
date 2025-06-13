@@ -13,17 +13,49 @@ export type {
   CreateContactDetails,
   UpdateContactDetails,
 } from "./ContactDetails";
+
 export type { Company, UpdateCompany } from "./Company";
+
 export type { Location, CreateLocation, UpdateLocation } from "./Location";
+
 export type { Page } from "./Page";
+
 export type { FileEntity } from "./FileEntity";
+
 export type { Folder } from "./Folder";
+
 export type {
   IndexingJob,
   IndexingJobStatistics,
   IndexingJobDetail,
 } from "./IndexingJob";
-export type { UserRole, PageStatus, FileType, FolderType } from "./enums";
+
+export type {
+  UserRole,
+  PageStatus,
+  FileType,
+  FolderType,
+  ProductStatus,
+  ProductType,
+} from "./enums";
+
+export type {
+  Product,
+  CreateProduct,
+  UpdateProduct,
+  ProductVariant,
+  CreateProductVariant,
+  UpdateProductVariant,
+  Category,
+  CreateCategory,
+  UpdateCategory,
+  ProductImage,
+  CreateProductImage,
+  ProductOption,
+  CreateProductOption,
+  ProductOptionValue,
+  CreateProductOptionValue,
+} from "./Product";
 
 export type {
   LoginRequest,

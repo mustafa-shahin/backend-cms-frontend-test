@@ -30,3 +30,16 @@ export enum FolderType {
   CompanyAssets = 6,
   Temporary = 7,
 }
+
+export enum ProductStatus {
+  Draft = 0,
+  Active = 1,
+  Archived = 2,
+}
+
+export enum ProductType {
+  Physical = 0,
+  Digital = 1,
+  Service = 2,
+  GiftCard = 3,
+}

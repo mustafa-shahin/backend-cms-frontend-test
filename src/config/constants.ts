@@ -138,6 +138,10 @@ export const ROUTES = {
   FILES_ARCHIVES: "/dashboard/files/archives",
   JOBS_TRIGGERS: "/dashboard/jobs/triggers",
   JOBS_HISTORY: "/dashboard/jobs/history",
+  PRODUCTS: "/dashboard/products",
+  PRODUCTS_LIST: "/dashboard/products/list",
+  CATEGORIES: "/dashboard/products/categories",
+  PRODUCT_VARIANTS: "/dashboard/products/variants",
 } as const;
 
 // Local Storage Keys

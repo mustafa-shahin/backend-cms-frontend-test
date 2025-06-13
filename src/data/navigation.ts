@@ -15,6 +15,32 @@ export const navigation: NavigationItem[] = [
     iconSolid: "file-text",
   },
   {
+    name: "Products",
+    href: ROUTES.PRODUCTS,
+    icon: "briefcase",
+    iconSolid: "briefcase",
+    children: [
+      {
+        name: "All Products",
+        href: ROUTES.PRODUCTS_LIST,
+        icon: "briefcase",
+        iconSolid: "briefcase",
+      },
+      {
+        name: "Categories",
+        href: ROUTES.CATEGORIES,
+        icon: "folder",
+        iconSolid: "folder",
+      },
+      {
+        name: "Variants",
+        href: ROUTES.PRODUCT_VARIANTS,
+        icon: "cog",
+        iconSolid: "cog",
+      },
+    ],
+  },
+  {
     name: "Users",
     href: ROUTES.USERS,
     icon: "users",
