@@ -1,4 +1,3 @@
-// src/components/ui/ImageSelector.tsx
 import React, { useState, useEffect } from "react";
 import { FileEntity } from "../../types/FileEntity";
 import { FileType } from "../../types/enums";
@@ -28,44 +27,78 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Effect to load selected images when the 'value' prop changes
   useEffect(() => {
-    if (value) {
+    console.log("ImageSelector: value prop changed to:", value);
+    if (value && (Array.isArray(value) ? value.length > 0 : value > 0)) {
       loadSelectedImages();
     } else {
+      // If value is empty or 0, clear any previously selected images
       setSelectedImages([]);
+      console.log(
+        "ImageSelector: Clearing selected images (value is empty/0)."
+      );
     }
-  }, [value]);
+  }, [value]); // Dependency on 'value' ensures this runs when value changes
 
   const loadSelectedImages = async () => {
     try {
       if (!value) {
         setSelectedImages([]);
+        console.log(
+          "loadSelectedImages: No value provided, clearing selected images."
+        );
         return;
       }
 
+      // Ensure value is treated as an array of IDs
       const imageIds = Array.isArray(value) ? value : [value];
+      // Filter out invalid IDs (0 or falsy values)
       const validIds = imageIds.filter((id) => id && id > 0);
 
       if (validIds.length === 0) {
         setSelectedImages([]);
+        console.log(
+          "loadSelectedImages: No valid image IDs found, clearing selected images."
+        );
         return;
       }
 
+      console.log(
+        "loadSelectedImages: Attempting to load image IDs:",
+        validIds
+      );
+
+      // Create promises for fetching each image
       const promises = validIds.map(async (id) => {
         try {
-          return await apiService.get<FileEntity>(`/file/${id}`);
+          const file = await apiService.get<FileEntity>(`/file/${id}`);
+          console.log(
+            `loadSelectedImages: Successfully loaded image ${id}:`,
+            file
+          );
+          return file;
         } catch (error) {
-          console.warn(`Failed to load image ${id}:`, error);
-          return null;
+          console.warn(
+            `loadSelectedImages: Failed to load image ${id}:`,
+            error
+          );
+          return null; // Return null if fetching fails for a specific image
         }
       });
 
+      // Wait for all promises to resolve
       const results = await Promise.all(promises);
+      // Filter out any null results from failed fetches
       const files = results.filter((file): file is FileEntity => file !== null);
       setSelectedImages(files);
+      console.log("loadSelectedImages: Selected images updated to:", files);
     } catch (error) {
-      console.error("Error loading selected images:", error);
-      setSelectedImages([]);
+      console.error(
+        "loadSelectedImages: Error loading selected images:",
+        error
+      );
+      setSelectedImages([]); // Ensure state is cleared on error
     }
   };
 
@@ -88,14 +121,17 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
         );
         setImages(result.items || []);
       } catch (error) {
-        // Fallback to direct array response
+        // Fallback to direct array response if PagedResult is not returned
+        console.warn(
+          "fetchImages: PagedResult failed, trying direct array response."
+        );
         const result = await apiService.get<FileEntity[]>(
           `/file?${params.toString()}`
         );
         setImages(Array.isArray(result) ? result : []);
       }
     } catch (error) {
-      console.error("Error fetching images:", error);
+      console.error("fetchImages: Error fetching images for modal:", error);
       toast.error("Failed to load images");
       setImages([]);
     } finally {
@@ -103,6 +139,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
     }
   };
 
+  // Effect to fetch images for the modal when it opens or search term changes
   useEffect(() => {
     if (isModalOpen) {
       fetchImages();
@@ -111,19 +148,21 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
 
   const handleImageSelect = (image: FileEntity) => {
     if (multiple) {
+      // Get current selected IDs, ensuring it's an array
       const currentIds = Array.isArray(value) ? value : [];
       if (currentIds.includes(image.id)) {
-        // Remove image
+        // Remove image if already selected
         const newIds = currentIds.filter((id) => id !== image.id);
         onChange(newIds);
       } else if (currentIds.length < maxImages) {
-        // Add image
+        // Add image if maxImages limit not reached
         const newIds = [...currentIds, image.id];
         onChange(newIds);
       } else {
         toast.error(`Maximum ${maxImages} images allowed`);
       }
     } else {
+      // For single selection, just set the new image ID and close modal
       onChange(image.id);
       setIsModalOpen(false);
     }
@@ -140,8 +179,17 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
       const newIds = currentIds.filter((id) => id !== imageId);
       onChange(newIds);
     } else {
+      // For single selection, setting to 0 or null clears the selection
       onChange(0);
     }
+    console.log(
+      `removeImage: Removed image with ID ${imageId}. New value:`,
+      multiple
+        ? Array.isArray(value)
+          ? value.filter((id) => id !== imageId)
+          : []
+        : 0
+    );
   };
 
   const isSelected = (imageId: number) => {
@@ -152,10 +200,12 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
   };
 
   const getImageUrl = (file: FileEntity) => {
+    // Uses apiService to get the full image URL
     return apiService.getImageUrl(file.id, "download");
   };
 
   const getThumbnailUrl = (file: FileEntity) => {
+    // Uses apiService to get the thumbnail URL, with fallback to full image
     return (
       apiService.getImageUrl(file.id, "thumbnail") ||
       apiService.getImageUrl(file.id, "download")
@@ -163,12 +213,12 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
   };
 
   const selectedCount = Array.isArray(value)
-    ? value.filter((id) => id > 0).length
+    ? value.filter((id) => id > 0).length // Count valid IDs if multiple
     : value && value > 0
-    ? 1
-    : 0;
+    ? 1 // Count 1 if single value is valid
+    : 0; // Count 0 if no valid single value
 
-  const shouldShowSelectButton = multiple || selectedCount === 0;
+  const shouldShowSelectButton = true;
 
   return (
     <div className={className}>
@@ -189,8 +239,12 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
                       alt={selectedImage.originalFileName}
                       className="w-full h-24 object-cover"
                       onError={(e) => {
+                        // Fallback SVG for broken image links
                         const target = e.target as HTMLImageElement;
                         target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236b7280">Failed to load</text></svg>`;
+                        console.error(
+                          `ImageSelector: Failed to load image thumbnail for ID ${selectedImage.id}.`
+                        );
                       }}
                     />
                   ) : (
@@ -207,6 +261,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
                       variant="danger"
                       onClick={(e) => removeImage(selectedImage.id, e)}
                       className="!p-1 !min-w-0 h-6 w-6 rounded-full opacity-80 hover:opacity-100"
+                      aria-label="Remove image"
                     >
                       <Icon name="times" size="xs" />
                     </Button>
@@ -231,7 +286,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
         </div>
       )}
 
-      {/* Add Images Button */}
+      {/* Button to open the image selection modal */}
       {shouldShowSelectButton && (
         <Button
           type="button"
@@ -248,8 +303,8 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
         </Button>
       )}
 
-      {/* Show current selection count for single image mode */}
-      {!multiple && selectedCount > 0 && (
+      {/* No longer needed as the main button changes text */}
+      {/* {!multiple && selectedCount > 0 && (
         <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           1 image selected.{" "}
           <Button
@@ -262,7 +317,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
             Change
           </Button>
         </div>
-      )}
+      )} */}
 
       {/* Image Selection Modal */}
       <Modal
@@ -272,7 +327,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
         size="xl"
       >
         <div className="space-y-4">
-          {/* Search */}
+          {/* Search Input */}
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Icon name="search" size="sm" className="text-gray-400" />
@@ -286,7 +341,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
             />
           </div>
 
-          {/* Images Grid */}
+          {/* Images Grid or Loading/No Images Message */}
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <Icon
@@ -320,6 +375,9 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236b7280">Failed to load</text></svg>`;
+                          console.error(
+                            `ImageSelector: Failed to load image thumbnail for ID ${image.id} in modal.`
+                          );
                         }}
                       />
                     ) : (
