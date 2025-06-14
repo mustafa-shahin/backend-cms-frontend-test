@@ -1,3 +1,4 @@
+// src/components/entities/EntityManager.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { TableColumn, TableAction, FormField } from "../../types/entities";
 import { PagedResult } from "../../types/api";
@@ -32,6 +33,13 @@ export interface EntityManagerConfig<T> {
   onAfterDelete?: (entity: T) => void;
   transformDataForForm?: (entity: T) => any;
   transformDataForApi?: (data: any) => any;
+  customFormRender?: (
+    field: FormField,
+    value: any,
+    onChange: (value: any) => void,
+    errors: any,
+    formData?: any
+  ) => React.ReactNode | null;
 }
 
 interface EntityManagerProps<T> {
@@ -75,6 +83,7 @@ function EntityManager<T extends { id: number | string }>({
     onAfterDelete,
     transformDataForForm,
     transformDataForApi,
+    customFormRender,
   } = config;
 
   const entityNamePlural = entityName.endsWith("y")
@@ -402,7 +411,7 @@ function EntityManager<T extends { id: number | string }>({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingEntity ? editTitle : createTitle}
-        size="lg"
+        size="xl"
       >
         <Form
           fields={formFields}
@@ -411,6 +420,7 @@ function EntityManager<T extends { id: number | string }>({
           loading={formLoading}
           submitLabel={editingEntity ? "Update" : "Create"}
           onCancel={() => setIsModalOpen(false)}
+          customFieldRenderer={customFormRender}
         />
       </Modal>
     </div>

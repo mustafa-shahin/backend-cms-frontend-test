@@ -6,6 +6,8 @@ import {
   createSelectField,
   createTextField,
 } from "../../utils/formFieldHelpers";
+import ImageSelector from "../../components/ui/ImageSelector";
+import React from "react";
 
 export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
   entityName: "Product Variant",
@@ -16,10 +18,10 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
       label: "Title",
       render: (title, variant) => (
         <div className="flex items-center">
-          {variant.image && (
+          {variant.featuredImageUrl && (
             <div className="flex-shrink-0 h-8 w-8 mr-3">
               <img
-                src={variant.image}
+                src={variant.featuredImageUrl}
                 alt={title}
                 className="h-8 w-8 object-cover rounded"
               />
@@ -108,6 +110,15 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
       required: true,
       validation: { required: "SKU is required" },
     }),
+
+    // Variant Images
+    {
+      name: "imageIds",
+      label: "Variant Images",
+      type: "text", // We'll override this with custom render
+      description: "Select images for this variant",
+    } as FormField,
+
     createNumberField("price", "Price", {
       required: true,
       min: 0,
@@ -138,7 +149,6 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
       { value: "oz", label: "Ounces" },
     ]),
     createTextField("barcode", "Barcode"),
-    createTextField("image", "Image URL"),
     createNumberField("position", "Position", { min: 0 }),
     createCheckboxField("isDefault", "Default Variant"),
     createTextField("option1", "Option 1", {
@@ -146,5 +156,74 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
     }),
     createTextField("option2", "Option 2"),
     createTextField("option3", "Option 3"),
-  ] as FormField[], // Cast to FormField[]
+  ] as FormField[],
+  customFormRender: (field, value, onChange, errors) => {
+    if (field.name === "imageIds") {
+      return (
+        <div key={field.name}>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {field.label}
+            {field.required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          <ImageSelector
+            value={value || []}
+            onChange={onChange}
+            multiple={true}
+            maxImages={5}
+          />
+          {field.description && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {field.description}
+            </p>
+          )}
+          {errors[field.name] && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+              {(errors[field.name] as any)?.message || "This field is required"}
+            </p>
+          )}
+        </div>
+      );
+    }
+    return null;
+  },
+  onBeforeCreate: (data) => {
+    // Transform imageIds to images array
+    if (data.imageIds && Array.isArray(data.imageIds)) {
+      data.images = data.imageIds.map((fileId: number, index: number) => ({
+        fileId,
+        position: index,
+        isFeatured: index === 0,
+        alt: "",
+        caption: "",
+      }));
+      delete data.imageIds;
+    }
+
+    // Set default values
+    data.customFields = data.customFields || {};
+
+    return data;
+  },
+  onBeforeUpdate: (data, entity) => {
+    // Transform imageIds to images array
+    if (data.imageIds && Array.isArray(data.imageIds)) {
+      data.images = data.imageIds.map((fileId: number, index: number) => ({
+        fileId,
+        position: index,
+        isFeatured: index === 0,
+        alt: "",
+        caption: "",
+      }));
+      delete data.imageIds;
+    }
+
+    return data;
+  },
+  transformDataForForm: (variant) => {
+    const transformed = {
+      ...variant,
+      imageIds: variant.images?.map((img) => img.fileId) || [],
+    };
+    return transformed;
+  },
 };

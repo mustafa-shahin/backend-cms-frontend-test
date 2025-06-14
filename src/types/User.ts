@@ -6,6 +6,7 @@ import {
   UpdateContactDetails,
 } from "./ContactDetails";
 import { UserRole } from "./enums";
+import { FileEntity } from "./FileEntity";
 
 export interface User extends BaseEntity {
   email: string;
@@ -16,7 +17,9 @@ export interface User extends BaseEntity {
   isActive: boolean;
   isLocked: boolean;
   lastLoginAt?: string;
-  avatar?: string;
+  avatarFileId?: number;
+  avatarFile?: FileEntity;
+  avatarUrl?: string;
   timezone?: string;
   language?: string;
   emailVerifiedAt?: string;
@@ -32,7 +35,7 @@ export interface CreateUser {
   firstName: string;
   lastName: string;
   isActive: boolean;
-  avatar?: string;
+  avatarFileId?: number;
   timezone?: string;
   language?: string;
   role: UserRole;
@@ -47,7 +50,7 @@ export interface UpdateUser {
   firstName: string;
   lastName: string;
   isActive: boolean;
-  avatar?: string;
+  avatarFileId?: number;
   timezone?: string;
   language?: string;
   role: UserRole;

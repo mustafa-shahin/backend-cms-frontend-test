@@ -1,3 +1,4 @@
+// src/pages/DashboardPage.tsx
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../Context/AuthContext";
@@ -177,9 +178,9 @@ const DashboardPage: React.FC = () => {
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="h-12 w-12 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
-                {user?.avatar ? (
+                {user?.avatarUrl ? (
                   <img
-                    src={user.avatar}
+                    src={user.avatarUrl}
                     alt={user.firstName}
                     className="h-12 w-12 rounded-full object-cover"
                   />

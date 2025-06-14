@@ -15,6 +15,13 @@ interface FormProps {
   onCancel?: () => void;
   className?: string;
   showCancelButton?: boolean;
+  customFieldRenderer?: (
+    field: FormField,
+    value: any,
+    onChange: (value: any) => void,
+    errors: any,
+    formData?: any
+  ) => React.ReactNode | null;
 }
 
 const Form: React.FC<FormProps> = ({
@@ -27,15 +34,20 @@ const Form: React.FC<FormProps> = ({
   onCancel,
   className,
   showCancelButton = true,
+  customFieldRenderer,
 }) => {
   const {
     control,
     handleSubmit,
     formState: { errors },
-    reset, // Add reset function
+    reset,
+    watch,
   } = useForm({
     defaultValues,
   });
+
+  // Watch all form data for custom field renderer
+  const formData = watch();
 
   // Add useEffect to handle defaultValues changes
   useEffect(() => {
@@ -44,7 +56,6 @@ const Form: React.FC<FormProps> = ({
     }
   }, [defaultValues, reset]);
 
-  // Rest of your existing Form component code...
   const renderField = (field: FormField) => {
     const hasError = errors[field.name];
     const baseInputClasses = clsx(
@@ -53,147 +64,130 @@ const Form: React.FC<FormProps> = ({
       field.disabled && "bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
     );
 
-    switch (field.type) {
-      case "textarea":
-        return (
-          <Controller
-            name={field.name}
-            control={control}
-            rules={field.validation}
-            render={({ field: { onChange, value, ...fieldProps } }) => (
-              <textarea
-                {...fieldProps}
-                value={value || ""}
-                onChange={onChange}
-                placeholder={field.placeholder}
-                rows={field.rows || 3}
-                disabled={field.disabled}
-                className={baseInputClasses}
-              />
-            )}
-          />
-        );
+    return (
+      <Controller
+        key={field.name}
+        name={field.name}
+        control={control}
+        rules={field.validation}
+        render={({ field: { onChange, value, ...fieldProps } }) => {
+          // Check for custom field renderer first
+          if (customFieldRenderer) {
+            const customRender = customFieldRenderer(
+              field,
+              value,
+              onChange,
+              errors,
+              formData
+            );
+            if (customRender) {
+              return customRender;
+            }
+          }
 
-      case "select":
-        return (
-          <Controller
-            name={field.name}
-            control={control}
-            rules={field.validation}
-            render={({ field: { onChange, value, ...fieldProps } }) => (
-              <select
-                {...fieldProps}
-                value={value || ""}
-                onChange={onChange}
-                disabled={field.disabled}
-                multiple={field.multiple}
-                className={baseInputClasses}
-              >
-                <option value="">Select {field.label}</option>
-                {field.options?.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            )}
-          />
-        );
+          // Default field rendering
+          switch (field.type) {
+            case "textarea":
+              return (
+                <textarea
+                  {...fieldProps}
+                  value={value || ""}
+                  onChange={onChange}
+                  placeholder={field.placeholder}
+                  rows={field.rows || 3}
+                  disabled={field.disabled}
+                  className={baseInputClasses}
+                />
+              );
 
-      case "checkbox":
-        return (
-          <Controller
-            name={field.name}
-            control={control}
-            rules={field.validation}
-            render={({ field: { onChange, value, ...fieldProps } }) => (
-              <div className="flex items-center">
+            case "select":
+              return (
+                <select
+                  {...fieldProps}
+                  value={value || ""}
+                  onChange={onChange}
+                  disabled={field.disabled}
+                  multiple={field.multiple}
+                  className={baseInputClasses}
+                >
+                  <option value="">Select {field.label}</option>
+                  {field.options?.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              );
+
+            case "checkbox":
+              return (
+                <div className="flex items-center">
+                  <input
+                    {...fieldProps}
+                    type="checkbox"
+                    checked={value || false}
+                    onChange={(e) => onChange(e.target.checked)}
+                    disabled={field.disabled}
+                    className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                  />
+                  <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                    {field.label}
+                  </label>
+                </div>
+              );
+
+            case "file":
+              return (
                 <input
                   {...fieldProps}
-                  type="checkbox"
-                  checked={value || false}
-                  onChange={(e) => onChange(e.target.checked)}
+                  type="file"
+                  multiple={field.multiple}
+                  accept={field.accept}
                   disabled={field.disabled}
-                  className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    onChange(
+                      field.multiple ? Array.from(files || []) : files?.[0]
+                    );
+                  }}
+                  className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900 dark:file:text-primary-300"
                 />
-                <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                  {field.label}
-                </label>
-              </div>
-            )}
-          />
-        );
+              );
 
-      case "file":
-        return (
-          <Controller
-            name={field.name}
-            control={control}
-            rules={field.validation}
-            render={({ field: { onChange, value, ...fieldProps } }) => (
-              <input
-                {...fieldProps}
-                type="file"
-                multiple={field.multiple}
-                accept={field.accept}
-                disabled={field.disabled}
-                onChange={(e) => {
-                  const files = e.target.files;
-                  onChange(
-                    field.multiple ? Array.from(files || []) : files?.[0]
-                  );
-                }}
-                className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900 dark:file:text-primary-300"
-              />
-            )}
-          />
-        );
+            case "number":
+              return (
+                <input
+                  {...fieldProps}
+                  type="number"
+                  value={value || ""}
+                  onChange={(e) =>
+                    onChange(e.target.valueAsNumber || e.target.value)
+                  }
+                  placeholder={field.placeholder}
+                  min={field.min}
+                  max={field.max}
+                  step={field.step}
+                  disabled={field.disabled}
+                  className={baseInputClasses}
+                />
+              );
 
-      case "number":
-        return (
-          <Controller
-            name={field.name}
-            control={control}
-            rules={field.validation}
-            render={({ field: { onChange, value, ...fieldProps } }) => (
-              <input
-                {...fieldProps}
-                type="number"
-                value={value || ""}
-                onChange={(e) =>
-                  onChange(e.target.valueAsNumber || e.target.value)
-                }
-                placeholder={field.placeholder}
-                min={field.min}
-                max={field.max}
-                step={field.step}
-                disabled={field.disabled}
-                className={baseInputClasses}
-              />
-            )}
-          />
-        );
-
-      default:
-        return (
-          <Controller
-            name={field.name}
-            control={control}
-            rules={field.validation}
-            render={({ field: { onChange, value, ...fieldProps } }) => (
-              <input
-                {...fieldProps}
-                type={field.type}
-                value={value || ""}
-                onChange={onChange}
-                placeholder={field.placeholder}
-                disabled={field.disabled}
-                className={baseInputClasses}
-              />
-            )}
-          />
-        );
-    }
+            default:
+              return (
+                <input
+                  {...fieldProps}
+                  type={field.type}
+                  value={value || ""}
+                  onChange={onChange}
+                  placeholder={field.placeholder}
+                  disabled={field.disabled}
+                  className={baseInputClasses}
+                />
+              );
+          }
+        }}
+      />
+    );
   };
 
   return (

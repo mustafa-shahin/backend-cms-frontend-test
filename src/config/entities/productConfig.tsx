@@ -9,6 +9,9 @@ import {
 } from "../../utils/formFieldHelpers";
 import { ProductStatus, ProductType } from "../../types/enums";
 import { format } from "date-fns";
+import ImageSelector from "../../components/ui/ImageSelector";
+import ProductVariantManager from "../../components/ui/ProductVariantManager";
+import React from "react";
 
 export const productEntityConfig: EntityManagerConfig<Product> = {
   entityName: "Product",
@@ -146,6 +149,14 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     createTextAreaField("description", "Description", 4),
     createTextAreaField("shortDescription", "Short Description", 2),
 
+    // Product Images
+    {
+      name: "imageIds",
+      label: "Product Images",
+      type: "text", // We'll override this with custom render
+      description: "Select images for this product",
+    } as FormField,
+
     // Pricing
     createNumberField("price", "Price", {
       required: true,
@@ -219,6 +230,14 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     createTextField("tags", "Tags", { description: "Comma-separated tags" }),
     createCheckboxField("isTaxable", "Taxable"),
 
+    // Variants Section
+    {
+      name: "variants",
+      label: "Product Variants",
+      type: "text", // We'll override this with custom render
+      description: "Manage different variations of this product",
+    } as FormField,
+
     // SEO
     createTextField("metaTitle", "Meta Title", {
       description: "SEO title for search engines",
@@ -232,5 +251,100 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     createTextField("searchKeywords", "Search Keywords", {
       description: "Additional keywords for internal search",
     }),
-  ] as FormField[], // Cast to FormField[]
+  ] as FormField[],
+  customFormRender: (field, value, onChange, errors, formData) => {
+    if (field.name === "imageIds") {
+      return (
+        <div key={field.name}>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {field.label}
+            {field.required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          <ImageSelector
+            value={value || []}
+            onChange={onChange}
+            multiple={true}
+            maxImages={15}
+          />
+          {field.description && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {field.description}
+            </p>
+          )}
+          {errors[field.name] && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+              {(errors[field.name] as any)?.message || "This field is required"}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    if (field.name === "variants") {
+      return (
+        <div key={field.name}>
+          <ProductVariantManager
+            variants={value || []}
+            onVariantsChange={onChange}
+            productId={formData?.id}
+          />
+          {errors[field.name] && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+              {(errors[field.name] as any)?.message || "This field is required"}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  },
+  onBeforeCreate: (data) => {
+    // Transform imageIds to images array
+    if (data.imageIds && Array.isArray(data.imageIds)) {
+      data.images = data.imageIds.map((fileId: number, index: number) => ({
+        fileId,
+        position: index,
+        isFeatured: index === 0,
+        alt: "",
+        caption: "",
+      }));
+      delete data.imageIds;
+    }
+
+    // Set hasVariants based on variants array
+    data.hasVariants = data.variants && data.variants.length > 0;
+
+    // Set default values
+    data.customFields = data.customFields || {};
+    data.seoSettings = data.seoSettings || {};
+
+    return data;
+  },
+  onBeforeUpdate: (data, entity) => {
+    // Transform imageIds to images array
+    if (data.imageIds && Array.isArray(data.imageIds)) {
+      data.images = data.imageIds.map((fileId: number, index: number) => ({
+        fileId,
+        position: index,
+        isFeatured: index === 0,
+        alt: "",
+        caption: "",
+      }));
+      delete data.imageIds;
+    }
+
+    // Set hasVariants based on variants array
+    data.hasVariants = data.variants && data.variants.length > 0;
+
+    return data;
+  },
+  transformDataForForm: (product) => {
+    const transformed = {
+      ...product,
+      imageIds: product.images?.map((img) => img.fileId) || [],
+      variants: product.variants || [],
+    };
+    return transformed;
+  },
 };

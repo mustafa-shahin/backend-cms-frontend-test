@@ -8,6 +8,8 @@ import {
   createTextField,
 } from "../../utils/formFieldHelpers";
 import { format } from "date-fns";
+import ImageSelector from "../../components/ui/ImageSelector";
+import React from "react";
 
 export const categoryEntityConfig: EntityManagerConfig<Category> = {
   entityName: "Category",
@@ -18,10 +20,10 @@ export const categoryEntityConfig: EntityManagerConfig<Category> = {
       label: "Name",
       render: (name, category) => (
         <div className="flex items-center">
-          {category.image && (
+          {category.featuredImageUrl && (
             <div className="flex-shrink-0 h-8 w-8 mr-3">
               <img
-                src={category.image}
+                src={category.featuredImageUrl}
                 alt={name}
                 className="h-8 w-8 object-cover rounded"
               />
@@ -100,9 +102,15 @@ export const categoryEntityConfig: EntityManagerConfig<Category> = {
     }),
     createTextAreaField("description", "Description", 4),
     createTextAreaField("shortDescription", "Short Description", 2),
-    createTextField("image", "Category Image URL", {
-      description: "URL to the category image",
-    }),
+
+    // Category Images
+    {
+      name: "imageIds",
+      label: "Category Images",
+      type: "text", // We'll override this with custom render
+      description: "Select images for this category",
+    } as FormField,
+
     createSelectField("parentCategoryId", "Parent Category", []),
     createCheckboxField("isActive", "Active"),
     createCheckboxField("isVisible", "Visible"),
@@ -116,5 +124,69 @@ export const categoryEntityConfig: EntityManagerConfig<Category> = {
     createTextField("metaKeywords", "Meta Keywords", {
       description: "Comma-separated keywords for SEO",
     }),
-  ] as FormField[], // Cast to FormField[]
+  ] as FormField[],
+  customFormRender: (field, value, onChange, errors) => {
+    if (field.name === "imageIds") {
+      return (
+        <div key={field.name}>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {field.label}
+            {field.required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          <ImageSelector
+            value={value || []}
+            onChange={onChange}
+            multiple={true}
+            maxImages={10}
+          />
+          {field.description && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {field.description}
+            </p>
+          )}
+          {errors[field.name] && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+              {(errors[field.name] as any)?.message || "This field is required"}
+            </p>
+          )}
+        </div>
+      );
+    }
+    return null;
+  },
+  onBeforeCreate: (data) => {
+    // Transform imageIds to images array
+    if (data.imageIds && Array.isArray(data.imageIds)) {
+      data.images = data.imageIds.map((fileId: number, index: number) => ({
+        fileId,
+        position: index,
+        isFeatured: index === 0,
+        alt: "",
+        caption: "",
+      }));
+      delete data.imageIds;
+    }
+    return data;
+  },
+  onBeforeUpdate: (data, entity) => {
+    // Transform imageIds to images array
+    if (data.imageIds && Array.isArray(data.imageIds)) {
+      data.images = data.imageIds.map((fileId: number, index: number) => ({
+        fileId,
+        position: index,
+        isFeatured: index === 0,
+        alt: "",
+        caption: "",
+      }));
+      delete data.imageIds;
+    }
+    return data;
+  },
+  transformDataForForm: (category) => {
+    const transformed = {
+      ...category,
+      imageIds: category.images?.map((img) => img.fileId) || [],
+    };
+    return transformed;
+  },
 };

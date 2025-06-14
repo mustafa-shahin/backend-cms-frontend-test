@@ -1,5 +1,46 @@
 import { BaseEntity } from "./api";
 import { ProductStatus, ProductType } from "./enums";
+import { FileEntity } from "./FileEntity";
+
+export interface ProductImage extends BaseEntity {
+  productId: number;
+  fileId: number;
+  file: FileEntity;
+  alt?: string;
+  caption?: string;
+  position: number;
+  isFeatured: boolean;
+  imageUrl: string;
+  thumbnailUrl?: string;
+}
+
+export interface CreateProductImage {
+  fileId: number;
+  alt?: string;
+  caption?: string;
+  position: number;
+  isFeatured: boolean;
+}
+
+export interface ProductVariantImage extends BaseEntity {
+  productVariantId: number;
+  fileId: number;
+  file: FileEntity;
+  alt?: string;
+  caption?: string;
+  position: number;
+  isFeatured: boolean;
+  imageUrl: string;
+  thumbnailUrl?: string;
+}
+
+export interface CreateProductVariantImage {
+  fileId: number;
+  alt?: string;
+  caption?: string;
+  position: number;
+  isFeatured: boolean;
+}
 
 export interface Product extends BaseEntity {
   name: string;
@@ -36,12 +77,6 @@ export interface Product extends BaseEntity {
   variants: ProductVariant[];
   images: ProductImage[];
   options: ProductOption[];
-
-  // Computed properties
-  statusName: string;
-  typeName: string;
-  isAvailable: boolean;
-  discountPercentage?: number;
   featuredImage?: string;
 }
 
@@ -98,18 +133,17 @@ export interface ProductVariant extends BaseEntity {
   weight: number;
   weightUnit?: string;
   barcode?: string;
-  image?: string;
   position: number;
   isDefault: boolean;
   customFields: Record<string, any>;
   option1?: string;
   option2?: string;
   option3?: string;
-
-  // Computed properties
+  images: ProductVariantImage[];
   isAvailable: boolean;
   discountPercentage?: number;
   displayTitle: string;
+  featuredImageUrl?: string;
 }
 
 export interface CreateProductVariant {
@@ -126,17 +160,37 @@ export interface CreateProductVariant {
   weight: number;
   weightUnit?: string;
   barcode?: string;
-  image?: string;
   position: number;
   isDefault: boolean;
   customFields: Record<string, any>;
   option1?: string;
   option2?: string;
   option3?: string;
+  images: CreateProductVariantImage[];
 }
 
 export interface UpdateProductVariant extends CreateProductVariant {
   id: number;
+}
+
+export interface CategoryImage extends BaseEntity {
+  categoryId: number;
+  fileId: number;
+  file: FileEntity;
+  alt?: string;
+  caption?: string;
+  position: number;
+  isFeatured: boolean;
+  imageUrl: string;
+  thumbnailUrl?: string;
+}
+
+export interface CreateCategoryImage {
+  fileId: number;
+  alt?: string;
+  caption?: string;
+  position: number;
+  isFeatured: boolean;
 }
 
 export interface Category extends BaseEntity {
@@ -144,7 +198,6 @@ export interface Category extends BaseEntity {
   slug: string;
   description?: string;
   shortDescription?: string;
-  image?: string;
   parentCategoryId?: number;
   parentCategoryName?: string;
   subCategories: Category[];
@@ -156,6 +209,8 @@ export interface Category extends BaseEntity {
   metaKeywords?: string;
   customFields: Record<string, any>;
   productCount: number;
+  images: CategoryImage[];
+  featuredImageUrl?: string;
 }
 
 export interface CreateCategory {
@@ -163,7 +218,6 @@ export interface CreateCategory {
   slug: string;
   description?: string;
   shortDescription?: string;
-  image?: string;
   parentCategoryId?: number;
   isActive: boolean;
   isVisible: boolean;
@@ -172,30 +226,10 @@ export interface CreateCategory {
   metaDescription?: string;
   metaKeywords?: string;
   customFields: Record<string, any>;
+  images: CreateCategoryImage[];
 }
 
 export interface UpdateCategory extends CreateCategory {}
-
-export interface ProductImage extends BaseEntity {
-  productId: number;
-  productVariantId?: number;
-  url: string;
-  alt?: string;
-  position: number;
-  width?: number;
-  height?: number;
-  originalSource?: string;
-}
-
-export interface CreateProductImage {
-  productVariantId?: number;
-  url: string;
-  alt?: string;
-  position: number;
-  width?: number;
-  height?: number;
-  originalSource?: string;
-}
 
 export interface ProductOption extends BaseEntity {
   productId: number;
