@@ -52,9 +52,22 @@ const Form: React.FC<FormProps> = ({
   // Add useEffect to handle defaultValues changes
   useEffect(() => {
     if (defaultValues && Object.keys(defaultValues).length > 0) {
+      console.log("[Form] Resetting form with default values:", defaultValues);
       reset(defaultValues);
     }
   }, [defaultValues, reset]);
+
+  const handleFormSubmit = (data: any) => {
+    console.log("[Form] Form submitted with data:", data);
+    onSubmit(data);
+  };
+
+  const handleCancel = () => {
+    console.log("[Form] Form cancelled");
+    if (onCancel) {
+      onCancel();
+    }
+  };
 
   const renderField = (field: FormField) => {
     const hasError = errors[field.name];
@@ -197,7 +210,7 @@ const Form: React.FC<FormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className={className}>
+    <form onSubmit={handleSubmit(handleFormSubmit)} className={className}>
       <div className="space-y-6">
         {fields.map((field) => {
           // Check if this field has a custom renderer
@@ -257,7 +270,7 @@ const Form: React.FC<FormProps> = ({
           <Button
             type="button"
             variant="outline"
-            onClick={onCancel}
+            onClick={handleCancel}
             disabled={loading}
           >
             {cancelLabel}

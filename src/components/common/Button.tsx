@@ -21,6 +21,7 @@ const Button: React.FC<ButtonProps> = ({
   fullWidth = false,
   className,
   disabled,
+  type = "button", // Default to button type to prevent form submission
   children,
   ...props
 }) => {
@@ -64,6 +65,7 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
+      type={type}
       className={combinedClassName}
       disabled={disabled || loading}
       {...props}

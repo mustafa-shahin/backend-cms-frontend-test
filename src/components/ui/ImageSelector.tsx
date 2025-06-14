@@ -129,7 +129,12 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
     }
   };
 
-  const removeImage = (imageId: number) => {
+  const removeImage = (imageId: number, event?: React.MouseEvent) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
     if (multiple) {
       const currentIds = Array.isArray(value) ? value : [];
       const newIds = currentIds.filter((id) => id !== imageId);
@@ -163,6 +168,8 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
     ? 1
     : 0;
 
+  const shouldShowSelectButton = multiple || selectedCount === 0;
+
   return (
     <div className={className}>
       {/* Selected Images Display */}
@@ -174,7 +181,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
               return (
                 <div
                   key={selectedImage.id}
-                  className="relative group bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden"
+                  className="relative group bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border-2 border-primary-200 dark:border-primary-700"
                 >
                   {thumbnailUrl ? (
                     <img
@@ -191,17 +198,27 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
                       <Icon name="image" size="lg" className="text-gray-400" />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center">
+
+                  {/* Remove button */}
+                  <div className="absolute top-1 right-1">
                     <Button
+                      type="button"
                       size="xs"
                       variant="danger"
-                      leftIcon="trash"
-                      onClick={() => removeImage(selectedImage.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => removeImage(selectedImage.id, e)}
+                      className="!p-1 !min-w-0 h-6 w-6 rounded-full opacity-80 hover:opacity-100"
                     >
-                      Remove
+                      <Icon name="times" size="xs" />
                     </Button>
                   </div>
+
+                  {/* Selected indicator */}
+                  <div className="absolute top-1 left-1">
+                    <div className="bg-primary-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">
+                      {multiple ? index + 1 : <Icon name="check" size="xs" />}
+                    </div>
+                  </div>
+
                   <div className="p-2">
                     <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                       {selectedImage.originalFileName}
@@ -215,18 +232,37 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
       )}
 
       {/* Add Images Button */}
-      <Button
-        variant="outline"
-        leftIcon="image"
-        onClick={() => setIsModalOpen(true)}
-        className="w-full"
-      >
-        {selectedCount > 0
-          ? `${
-              multiple ? "Add More Images" : "Change Image"
-            } (${selectedCount}${multiple ? `/${maxImages}` : ""})`
-          : "Select Image(s)"}
-      </Button>
+      {shouldShowSelectButton && (
+        <Button
+          type="button"
+          variant="outline"
+          leftIcon="image"
+          onClick={() => setIsModalOpen(true)}
+          className="w-full"
+        >
+          {selectedCount > 0
+            ? `${
+                multiple ? "Add More Images" : "Change Image"
+              } (${selectedCount}${multiple ? `/${maxImages}` : ""})`
+            : "Select Image(s)"}
+        </Button>
+      )}
+
+      {/* Show current selection count for single image mode */}
+      {!multiple && selectedCount > 0 && (
+        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          1 image selected.{" "}
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={() => setIsModalOpen(true)}
+            className="!p-1 !text-primary-600 !font-medium"
+          >
+            Change
+          </Button>
+        </div>
+      )}
 
       {/* Image Selection Modal */}
       <Modal
@@ -264,11 +300,13 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 max-h-96 overflow-y-auto">
               {images.map((image) => {
                 const thumbnailUrl = getThumbnailUrl(image);
+                const selected = isSelected(image.id);
+
                 return (
                   <div
                     key={image.id}
                     className={`relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${
-                      isSelected(image.id)
+                      selected
                         ? "ring-2 ring-primary-500 shadow-lg"
                         : "hover:shadow-md"
                     }`}
@@ -293,17 +331,18 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
                         />
                       </div>
                     )}
+
+                    {/* Selection overlay */}
                     <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity flex items-center justify-center">
-                      {isSelected(image.id) && (
+                      {selected && (
                         <div className="absolute top-2 right-2">
-                          <Icon
-                            name="check"
-                            size="sm"
-                            className="text-white bg-primary-500 rounded-full p-1"
-                          />
+                          <div className="bg-primary-500 text-white rounded-full h-6 w-6 flex items-center justify-center">
+                            <Icon name="check" size="xs" />
+                          </div>
                         </div>
                       )}
                     </div>
+
                     <div className="p-2 bg-white dark:bg-gray-800">
                       <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                         {image.originalFileName}
@@ -333,11 +372,19 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsModalOpen(false)}
+            >
               Cancel
             </Button>
             {multiple && (
-              <Button onClick={() => setIsModalOpen(false)} leftIcon="check">
+              <Button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                leftIcon="check"
+              >
                 Done ({selectedCount} selected)
               </Button>
             )}

@@ -99,6 +99,9 @@ function EntityManager<T extends { id: number | string }>({
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      console.log(
+        `[EntityManager] Fetching data for ${entityName} from endpoint: ${apiEndpoint}`
+      );
 
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -109,26 +112,46 @@ function EntityManager<T extends { id: number | string }>({
         params.append("search", searchTerm);
       }
 
+      const fullEndpoint = `${apiEndpoint}?${params.toString()}`;
+      console.log(`[EntityManager] Full API endpoint: ${fullEndpoint}`);
+
       try {
-        const result = await apiService.get<PagedResult<T>>(
-          `${apiEndpoint}?${params.toString()}`
-        );
+        const result = await apiService.get<PagedResult<T>>(fullEndpoint);
+        console.log(`[EntityManager] Received paged result:`, result);
 
         setData(result.items || []);
         setTotalCount(result.totalCount || 0);
       } catch (error: any) {
+        console.log(
+          `[EntityManager] Paged request failed, trying fallback approaches:`,
+          error
+        );
+
         if (error.response?.status === 404 || !searchTerm) {
           try {
             const result = await apiService.get<T[]>(apiEndpoint);
+            console.log(`[EntityManager] Fallback array result:`, result);
+
             const resultArray = Array.isArray(result) ? result : [result];
             setData(resultArray);
             setTotalCount(resultArray.length);
           } catch (singleError) {
+            console.log(
+              `[EntityManager] Array request failed, trying single entity:`,
+              singleError
+            );
+
             try {
               const singleResult = await apiService.get<T>(apiEndpoint);
+              console.log(
+                `[EntityManager] Single entity result:`,
+                singleResult
+              );
+
               setData(singleResult ? [singleResult] : []);
               setTotalCount(singleResult ? 1 : 0);
             } catch (finalError) {
+              console.error(`[EntityManager] All requests failed:`, finalError);
               setData([]);
               setTotalCount(0);
               toast.error(`Failed to load ${entityNamePlural}`);
@@ -139,24 +162,37 @@ function EntityManager<T extends { id: number | string }>({
         }
       }
     } catch (error) {
+      console.error(`[EntityManager] Error in fetchData:`, error);
       setData([]);
       setTotalCount(0);
       toast.error(`Failed to load ${entityNamePlural}`);
     } finally {
       setLoading(false);
     }
-  }, [apiEndpoint, entityNamePlural, currentPage, pageSize, searchTerm]);
+  }, [
+    apiEndpoint,
+    entityName,
+    entityNamePlural,
+    currentPage,
+    pageSize,
+    searchTerm,
+  ]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const handleCreate = () => {
+    console.log(`[EntityManager] Opening create modal for ${entityName}`);
     setEditingEntity(null);
     setIsModalOpen(true);
   };
 
   const handleEdit = (entity: T) => {
+    console.log(
+      `[EntityManager] Opening edit modal for ${entityName}:`,
+      entity
+    );
     setEditingEntity(entity);
     setIsModalOpen(true);
   };
@@ -177,6 +213,9 @@ function EntityManager<T extends { id: number | string }>({
     }
 
     try {
+      console.log(
+        `[EntityManager] Deleting ${entityName} with ID: ${entity.id}`
+      );
       await apiService.delete(`${apiEndpoint}/${entity.id}`);
       await fetchData();
       toast.success(`${entityName} deleted successfully`);
@@ -193,21 +232,37 @@ function EntityManager<T extends { id: number | string }>({
   const handleFormSubmit = async (formData: any) => {
     try {
       setFormLoading(true);
+      console.log(`[EntityManager] Form submission for ${entityName}:`, {
+        isEditing: !!editingEntity,
+        editingEntityId: editingEntity?.id,
+        apiEndpoint,
+        formData,
+      });
 
       let processedData = formData;
       if (transformDataForApi) {
         processedData = transformDataForApi(formData);
+        console.log(`[EntityManager] Transformed data:`, processedData);
       }
 
       if (editingEntity) {
+        console.log(
+          `[EntityManager] Updating ${entityName} with ID: ${editingEntity.id}`
+        );
+
         if (onBeforeUpdate) {
           processedData = onBeforeUpdate(processedData, editingEntity);
+          console.log(
+            `[EntityManager] Data after onBeforeUpdate:`,
+            processedData
+          );
         }
 
-        const result = await apiService.put<T>(
-          `${apiEndpoint}/${editingEntity.id}`,
-          processedData
-        );
+        const updateEndpoint = `${apiEndpoint}/${editingEntity.id}`;
+        console.log(`[EntityManager] PUT endpoint: ${updateEndpoint}`);
+
+        const result = await apiService.put<T>(updateEndpoint, processedData);
+        console.log(`[EntityManager] Update result:`, result);
 
         await fetchData();
         toast.success(`${entityName} updated successfully`);
@@ -216,11 +271,19 @@ function EntityManager<T extends { id: number | string }>({
           onAfterUpdate(processedData, result);
         }
       } else {
+        console.log(`[EntityManager] Creating new ${entityName}`);
+
         if (onBeforeCreate) {
           processedData = onBeforeCreate(processedData);
+          console.log(
+            `[EntityManager] Data after onBeforeCreate:`,
+            processedData
+          );
         }
 
+        console.log(`[EntityManager] POST endpoint: ${apiEndpoint}`);
         const result = await apiService.post<T>(apiEndpoint, processedData);
+        console.log(`[EntityManager] Create result:`, result);
 
         await fetchData();
         toast.success(`${entityName} created successfully`);
@@ -241,13 +304,24 @@ function EntityManager<T extends { id: number | string }>({
 
   const getDefaultFormValues = () => {
     if (!editingEntity) {
+      console.log(
+        `[EntityManager] No editing entity, returning empty defaults`
+      );
       return {};
     }
 
+    console.log(
+      `[EntityManager] Getting form values for editing entity:`,
+      editingEntity
+    );
+
     if (transformDataForForm) {
       const transformed = transformDataForForm(editingEntity);
+      console.log(`[EntityManager] Transformed form data:`, transformed);
       return transformed;
     }
+
+    console.log(`[EntityManager] Using entity data as-is for form`);
     return editingEntity;
   };
 
@@ -258,6 +332,12 @@ function EntityManager<T extends { id: number | string }>({
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleModalClose = () => {
+    console.log(`[EntityManager] Modal closing, resetting state`);
+    setIsModalOpen(false);
+    setEditingEntity(null);
   };
 
   const tableActions: TableAction<T>[] = [
@@ -324,7 +404,7 @@ function EntityManager<T extends { id: number | string }>({
           )}
 
           {canCreate && (
-            <Button onClick={handleCreate} leftIcon="plus">
+            <Button type="button" onClick={handleCreate} leftIcon="plus">
               Create {entityName}
             </Button>
           )}
@@ -362,6 +442,7 @@ function EntityManager<T extends { id: number | string }>({
           </div>
           <div className="flex items-center space-x-2">
             <Button
+              type="button"
               size="sm"
               variant="outline"
               onClick={() => handlePageChange(currentPage - 1)}
@@ -374,6 +455,7 @@ function EntityManager<T extends { id: number | string }>({
               Page {currentPage} of {Math.ceil(totalCount / pageSize)}
             </span>
             <Button
+              type="button"
               size="sm"
               variant="outline"
               onClick={() => handlePageChange(currentPage + 1)}
@@ -395,6 +477,7 @@ function EntityManager<T extends { id: number | string }>({
           </span>
           <div className="flex space-x-2">
             <Button
+              type="button"
               size="sm"
               variant="danger"
               leftIcon="trash"
@@ -409,7 +492,7 @@ function EntityManager<T extends { id: number | string }>({
       {/* Create/Edit Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleModalClose}
         title={editingEntity ? editTitle : createTitle}
         size="xl"
       >
@@ -419,7 +502,7 @@ function EntityManager<T extends { id: number | string }>({
           defaultValues={getDefaultFormValues()}
           loading={formLoading}
           submitLabel={editingEntity ? "Update" : "Create"}
-          onCancel={() => setIsModalOpen(false)}
+          onCancel={handleModalClose}
           customFieldRenderer={customFormRender}
         />
       </Modal>
