@@ -2,16 +2,79 @@
 import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import clsx from "clsx";
-import {
-  CreateProductVariant,
-  UpdateProductVariant,
-  ProductVariant,
-  CreateProductVariantImage,
-} from "../../types/Product";
 import { Button, Icon, Modal } from "../common";
 import ImageSelector from "./ImageSelector";
 import { apiService } from "../../Services/ApiServices";
 import toast from "react-hot-toast";
+
+// Define the types locally since they might not be imported correctly
+interface ProductVariantImage {
+  id: number;
+  productVariantId: number;
+  fileId: number;
+  alt?: string;
+  caption?: string;
+  position: number;
+  isFeatured: boolean;
+  imageUrl: string;
+  thumbnailUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ProductVariant {
+  id: number;
+  productId: number;
+  title: string;
+  sku: string;
+  price: number;
+  compareAtPrice?: number;
+  costPerItem?: number;
+  quantity: number;
+  trackQuantity: boolean;
+  continueSellingWhenOutOfStock: boolean;
+  requiresShipping: boolean;
+  isTaxable: boolean;
+  weight: number;
+  weightUnit?: string;
+  barcode?: string;
+  position: number;
+  isDefault: boolean;
+  customFields: Record<string, any>;
+  option1?: string;
+  option2?: string;
+  option3?: string;
+  images: ProductVariantImage[];
+  featuredImageUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+  isAvailable: boolean;
+  discountPercentage?: number;
+  displayTitle: string;
+}
+
+interface CreateProductVariant {
+  title: string;
+  sku: string;
+  price: number;
+  compareAtPrice?: number;
+  costPerItem?: number;
+  quantity: number;
+  trackQuantity: boolean;
+  continueSellingWhenOutOfStock: boolean;
+  requiresShipping: boolean;
+  isTaxable: boolean;
+  weight: number;
+  weightUnit?: string;
+  barcode?: string;
+  position: number;
+  isDefault: boolean;
+  customFields: Record<string, any>;
+  option1?: string;
+  option2?: string;
+  option3?: string;
+  imageIds: number[];
+}
 
 interface ProductVariantManagerProps {
   variants: ProductVariant[];
@@ -37,7 +100,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<CreateProductVariant | UpdateProductVariant>({
+  } = useForm<CreateProductVariant>({
     defaultValues: {
       title: "",
       sku: "",
@@ -58,7 +121,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
       option1: "",
       option2: "",
       option3: "",
-      images: [],
+      imageIds: [],
     },
   });
 
@@ -84,7 +147,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
       option1: "",
       option2: "",
       option3: "",
-      images: [],
+      imageIds: [],
     });
     setIsModalOpen(true);
   };
@@ -92,14 +155,26 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
   const handleEditVariant = (variant: ProductVariant) => {
     setEditingVariant(variant);
     reset({
-      ...variant,
-      images: variant.images.map((img) => ({
-        fileId: img.fileId,
-        alt: img.alt || "",
-        caption: img.caption || "",
-        position: img.position,
-        isFeatured: img.isFeatured,
-      })),
+      title: variant.title,
+      sku: variant.sku,
+      price: variant.price,
+      compareAtPrice: variant.compareAtPrice,
+      costPerItem: variant.costPerItem,
+      quantity: variant.quantity,
+      trackQuantity: variant.trackQuantity,
+      continueSellingWhenOutOfStock: variant.continueSellingWhenOutOfStock,
+      requiresShipping: variant.requiresShipping,
+      isTaxable: variant.isTaxable,
+      weight: variant.weight,
+      weightUnit: variant.weightUnit || "kg",
+      barcode: variant.barcode || "",
+      position: variant.position,
+      isDefault: variant.isDefault,
+      customFields: variant.customFields || {},
+      option1: variant.option1 || "",
+      option2: variant.option2 || "",
+      option3: variant.option3 || "",
+      imageIds: variant.images?.map((img) => img.fileId) || [],
     });
     setIsModalOpen(true);
   };
@@ -112,77 +187,51 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     }
   };
 
-  const handleFormSubmit = async (
-    formData: CreateProductVariant | UpdateProductVariant
-  ) => {
+  const handleFormSubmit = async (formData: CreateProductVariant) => {
     try {
       setLoading(true);
 
-      // Convert image IDs to image objects
-      const images: CreateProductVariantImage[] = formData.images.map(
-        (img, index) => ({
-          fileId: img.fileId,
-          position: index,
-          isFeatured: index === 0,
-          alt: img.alt || "",
-          caption: img.caption || "",
-        })
-      );
-
-      const variantData = {
-        ...formData,
-        images,
-        customFields: formData.customFields || {},
-      };
-
       if (editingVariant) {
         // Update existing variant
+        const updatedVariant: ProductVariant = {
+          ...editingVariant,
+          ...formData,
+          images: formData.imageIds.map((fileId, index) => ({
+            id: editingVariant.images[index]?.id || Date.now() + index,
+            productVariantId: editingVariant.id,
+            fileId,
+            alt: "",
+            caption: "",
+            position: index,
+            isFeatured: index === 0,
+            imageUrl: apiService.getImageUrl(fileId, "download") || "",
+            thumbnailUrl: apiService.getImageUrl(fileId, "thumbnail") || "",
+            createdAt: editingVariant.createdAt,
+            updatedAt: new Date().toISOString(),
+          })),
+          isAvailable:
+            formData.quantity > 0 || formData.continueSellingWhenOutOfStock,
+          discountPercentage: formData.compareAtPrice
+            ? Math.round(
+                ((formData.compareAtPrice - formData.price) /
+                  formData.compareAtPrice) *
+                  100
+              )
+            : undefined,
+          displayTitle: formData.title || generateDisplayTitle(formData),
+          featuredImageUrl:
+            apiService.getFeaturedImageUrl(
+              formData.imageIds.map((fileId, index) => ({
+                fileId,
+                isFeatured: index === 0,
+                position: index,
+              }))
+            ) || undefined,
+          updatedAt: new Date().toISOString(),
+        };
+
         const updatedVariants = variants.map((v) =>
-          v.id === editingVariant.id
-            ? {
-                ...editingVariant,
-                ...variantData,
-                id: editingVariant.id,
-                productId: editingVariant.productId,
-                createdAt: editingVariant.createdAt,
-                updatedAt: new Date().toISOString(),
-                isAvailable:
-                  variantData.quantity > 0 ||
-                  variantData.continueSellingWhenOutOfStock,
-                discountPercentage: variantData.compareAtPrice
-                  ? Math.round(
-                      ((variantData.compareAtPrice - variantData.price) /
-                        variantData.compareAtPrice) *
-                        100
-                    )
-                  : undefined,
-                displayTitle:
-                  variantData.title || generateDisplayTitle(variantData),
-                featuredImageUrl:
-                  apiService.getFeaturedImageUrl(
-                    images.map((img) => ({
-                      fileId: img.fileId,
-                      isFeatured: img.isFeatured,
-                      position: img.position,
-                    }))
-                  ) || undefined,
-                images: images.map((img, idx) => ({
-                  id: editingVariant.images[idx]?.id || Date.now() + idx,
-                  productVariantId: editingVariant.id,
-                  fileId: img.fileId,
-                  alt: img.alt,
-                  caption: img.caption,
-                  position: img.position,
-                  isFeatured: img.isFeatured,
-                  imageUrl:
-                    apiService.getImageUrl(img.fileId, "download") || "",
-                  thumbnailUrl:
-                    apiService.getImageUrl(img.fileId, "thumbnail") || "",
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                })),
-              }
-            : v
+          v.id === editingVariant.id ? updatedVariant : v
         );
         onVariantsChange(updatedVariants);
         toast.success("Variant updated successfully");
@@ -191,46 +240,45 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
         const newVariant: ProductVariant = {
           id: Date.now(), // Temporary ID for local state
           productId: productId || 0,
-          ...variantData,
+          ...formData,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          isAvailable:
-            variantData.quantity > 0 ||
-            variantData.continueSellingWhenOutOfStock,
-          discountPercentage: variantData.compareAtPrice
-            ? Math.round(
-                ((variantData.compareAtPrice - variantData.price) /
-                  variantData.compareAtPrice) *
-                  100
-              )
-            : undefined,
-          displayTitle: variantData.title || generateDisplayTitle(variantData),
-          featuredImageUrl:
-            apiService.getFeaturedImageUrl(
-              images.map((img) => ({
-                fileId: img.fileId,
-                isFeatured: img.isFeatured,
-                position: img.position,
-              }))
-            ) || undefined,
-          images: images.map((img, idx) => ({
-            id: Date.now() + idx,
+          images: formData.imageIds.map((fileId, index) => ({
+            id: Date.now() + index,
             productVariantId: Date.now(),
-            fileId: img.fileId,
-            alt: img.alt,
-            caption: img.caption,
-            position: img.position,
-            isFeatured: img.isFeatured,
-            imageUrl: apiService.getImageUrl(img.fileId, "download") || "",
-            thumbnailUrl: apiService.getImageUrl(img.fileId, "thumbnail") || "",
+            fileId,
+            alt: "",
+            caption: "",
+            position: index,
+            isFeatured: index === 0,
+            imageUrl: apiService.getImageUrl(fileId, "download") || "",
+            thumbnailUrl: apiService.getImageUrl(fileId, "thumbnail") || "",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           })),
+          isAvailable:
+            formData.quantity > 0 || formData.continueSellingWhenOutOfStock,
+          discountPercentage: formData.compareAtPrice
+            ? Math.round(
+                ((formData.compareAtPrice - formData.price) /
+                  formData.compareAtPrice) *
+                  100
+              )
+            : undefined,
+          displayTitle: formData.title || generateDisplayTitle(formData),
+          featuredImageUrl:
+            apiService.getFeaturedImageUrl(
+              formData.imageIds.map((fileId, index) => ({
+                fileId,
+                isFeatured: index === 0,
+                position: index,
+              }))
+            ) || undefined,
         };
 
         // If this is the first variant or marked as default, make it default
         let updatedVariants = [...variants];
-        if (variants.length === 0 || variantData.isDefault) {
+        if (variants.length === 0 || formData.isDefault) {
           // Remove default from other variants
           updatedVariants = updatedVariants.map((v) => ({
             ...v,
@@ -252,9 +300,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     }
   };
 
-  const generateDisplayTitle = (
-    variant: CreateProductVariant | UpdateProductVariant
-  ) => {
+  const generateDisplayTitle = (variant: CreateProductVariant) => {
     const options = [variant.option1, variant.option2, variant.option3].filter(
       Boolean
     );
@@ -407,48 +453,27 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     );
   };
 
-  // Define a type for your form fields to ensure type safety
-  type FormField = {
-    name: keyof (CreateProductVariant | UpdateProductVariant);
-    label: string;
-    required?: boolean;
-    validation?: Record<string, any>;
-    description?: string;
-  } & (
-    | { type: "text"; placeholder?: string }
-    | {
-        type: "number";
-        min?: number;
-        max?: number;
-        step?: number;
-        placeholder?: string;
-      }
-    | { type: "checkbox" }
-    | { type: "select"; options: { value: string; label: string }[] }
-    | { type: "textarea"; placeholder?: string }
-  );
-
-  const variantFormFields: FormField[] = [
+  const variantFormFields = [
     {
-      name: "title",
+      name: "title" as const,
       label: "Variant Title",
-      type: "text",
+      type: "text" as const,
       required: true,
       validation: { required: "Variant title is required" },
       placeholder: "e.g., Small, Red, Cotton",
     },
     {
-      name: "sku",
+      name: "sku" as const,
       label: "SKU",
-      type: "text",
+      type: "text" as const,
       required: true,
       validation: { required: "SKU is required" },
       placeholder: "e.g., PRODUCT-SMALL-RED",
     },
     {
-      name: "price",
+      name: "price" as const,
       label: "Price",
-      type: "number",
+      type: "number" as const,
       required: true,
       min: 0,
       step: 0.01,
@@ -456,60 +481,60 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
       placeholder: "0.00",
     },
     {
-      name: "compareAtPrice",
+      name: "compareAtPrice" as const,
       label: "Compare at Price",
-      type: "number",
+      type: "number" as const,
       min: 0,
       step: 0.01,
       placeholder: "0.00",
     },
     {
-      name: "costPerItem",
+      name: "costPerItem" as const,
       label: "Cost per Item",
-      type: "number",
+      type: "number" as const,
       min: 0,
       step: 0.01,
       placeholder: "0.00",
     },
     {
-      name: "quantity",
+      name: "quantity" as const,
       label: "Quantity",
-      type: "number",
+      type: "number" as const,
       min: 0,
       placeholder: "0",
     },
     {
-      name: "trackQuantity",
+      name: "trackQuantity" as const,
       label: "Track Quantity",
-      type: "checkbox",
+      type: "checkbox" as const,
     },
     {
-      name: "continueSellingWhenOutOfStock",
+      name: "continueSellingWhenOutOfStock" as const,
       label: "Continue selling when out of stock",
-      type: "checkbox",
+      type: "checkbox" as const,
     },
     {
-      name: "requiresShipping",
+      name: "requiresShipping" as const,
       label: "Requires Shipping",
-      type: "checkbox",
+      type: "checkbox" as const,
     },
     {
-      name: "isTaxable",
+      name: "isTaxable" as const,
       label: "Taxable",
-      type: "checkbox",
+      type: "checkbox" as const,
     },
     {
-      name: "weight",
+      name: "weight" as const,
       label: "Weight",
-      type: "number",
+      type: "number" as const,
       min: 0,
       step: 0.01,
       placeholder: "0.00",
     },
     {
-      name: "weightUnit",
+      name: "weightUnit" as const,
       label: "Weight Unit",
-      type: "select",
+      type: "select" as const,
       options: [
         { value: "kg", label: "Kilograms" },
         { value: "g", label: "Grams" },
@@ -518,40 +543,40 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
       ],
     },
     {
-      name: "barcode",
+      name: "barcode" as const,
       label: "Barcode",
-      type: "text",
+      type: "text" as const,
       placeholder: "e.g., 123456789012",
     },
     {
-      name: "position",
+      name: "position" as const,
       label: "Position",
-      type: "number",
+      type: "number" as const,
       min: 0,
       placeholder: "0",
     },
     {
-      name: "isDefault",
+      name: "isDefault" as const,
       label: "Default Variant",
-      type: "checkbox",
+      type: "checkbox" as const,
     },
     {
-      name: "option1",
+      name: "option1" as const,
       label: "Option 1",
-      type: "text",
+      type: "text" as const,
       description: "e.g., Size, Color, Material",
       placeholder: "e.g., Size",
     },
     {
-      name: "option2",
+      name: "option2" as const,
       label: "Option 2",
-      type: "text",
+      type: "text" as const,
       placeholder: "e.g., Color",
     },
     {
-      name: "option3",
+      name: "option3" as const,
       label: "Option 3",
-      type: "text",
+      type: "text" as const,
       placeholder: "e.g., Material",
     },
   ];
@@ -616,27 +641,12 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
               Variant Images
             </label>
             <Controller
-              name="images"
+              name="imageIds"
               control={control}
               render={({ field: { onChange, value } }) => (
                 <ImageSelector
-                  value={
-                    Array.isArray(value) ? value.map((img) => img.fileId) : []
-                  }
-                  onChange={(fileIds) => {
-                    const images: CreateProductVariantImage[] = Array.isArray(
-                      fileIds
-                    )
-                      ? fileIds.map((fileId, index) => ({
-                          fileId,
-                          alt: "",
-                          caption: "",
-                          position: index,
-                          isFeatured: index === 0,
-                        }))
-                      : [];
-                    onChange(images);
-                  }}
+                  value={value || []}
+                  onChange={onChange}
                   multiple={true}
                   maxImages={5}
                 />
@@ -672,19 +682,6 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                   );
 
                   switch (field.type) {
-                    case "textarea":
-                      return (
-                        <textarea
-                          id={field.name}
-                          {...fieldProps}
-                          value={(value as string) || ""}
-                          onChange={onChange}
-                          placeholder={field.placeholder}
-                          rows={3}
-                          className={baseInputClasses}
-                        />
-                      );
-
                     case "select":
                       return (
                         <select
@@ -739,7 +736,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                           }
                           placeholder={field.placeholder}
                           min={field.min}
-                          max={field.max}
+                          // max={field.max}
                           step={field.step}
                           className={baseInputClasses}
                         />

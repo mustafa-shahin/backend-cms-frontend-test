@@ -126,10 +126,41 @@ class ApiService {
     data?: any,
     config?: AxiosRequestConfig
   ): Promise<T> {
+    // Add detailed logging for product creation requests
+    if (url.includes("/product") && ENV.IS_DEVELOPMENT) {
+      console.log(`🌐 POST Request Details:`, {
+        url: `${this.client.defaults.baseURL}${url}`,
+        data: JSON.stringify(data, null, 2),
+        headers: {
+          ...this.client.defaults.headers,
+          ...config?.headers,
+        },
+      });
+
+      // Validate the data structure
+      if (data) {
+        console.log(`📊 Data validation:`, {
+          hasName: !!data.name,
+          hasSku: !!data.sku,
+          hasSlug: !!data.slug,
+          hasPrice: data.price !== undefined && data.price !== null,
+          priceType: typeof data.price,
+          compareAtPriceType: typeof data.compareAtPrice,
+          isValidJSON: (() => {
+            try {
+              JSON.stringify(data);
+              return true;
+            } catch {
+              return false;
+            }
+          })(),
+        });
+      }
+    }
+
     const response = await this.client.post<T>(url, data, config);
     return response.data;
   }
-
   async put<T>(
     url: string,
     data?: any,

@@ -1,4 +1,14 @@
-import { ValidationRule } from "react-hook-form"; // Assuming react-hook-form is used based on 'validation'
+import { ValidationRule } from "react-hook-form";
+
+export interface BaseField {
+  name: string;
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+  validation?: any;
+  disabled?: boolean;
+  description?: string;
+}
 
 export type FieldType =
   | "text"
@@ -24,39 +34,50 @@ export interface BaseFormField {
   };
 }
 
-export interface TextField extends BaseFormField {
-  type: "text" | "email";
+export interface TextField extends BaseField {
+  type: "text" | "email" | "password" | "url" | "tel";
 }
 
-export interface NumberField extends BaseFormField {
+export interface NumberField extends BaseField {
   type: "number";
   min?: number;
   max?: number;
   step?: number;
 }
 
-export interface TextAreaField extends BaseFormField {
+export interface TextAreaField extends BaseField {
   type: "textarea";
   rows?: number;
 }
 
 export interface SelectOption {
-  value: string | number;
+  value: any;
   label: string;
 }
 
-export interface SelectField extends BaseFormField {
+export interface SelectField extends BaseField {
   type: "select";
   options: SelectOption[];
+  multiple?: boolean;
 }
 
-export interface CheckboxField extends BaseFormField {
+export interface CheckboxField extends BaseField {
   type: "checkbox";
 }
 
+export interface FileField extends BaseField {
+  type: "file";
+  accept?: string;
+  multiple?: boolean;
+}
+export interface DateField extends BaseField {
+  type: "date" | "time" | "datetime-local";
+}
 export type FormField =
   | TextField
   | NumberField
   | TextAreaField
   | SelectField
-  | CheckboxField;
+  | CheckboxField
+  | FileField
+  | DateField;

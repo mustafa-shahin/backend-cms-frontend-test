@@ -116,49 +116,57 @@ function EntityManager<T extends { id: number | string }>({
       console.log(`[EntityManager] Full API endpoint: ${fullEndpoint}`);
 
       try {
-        const result = await apiService.get<PagedResult<T>>(fullEndpoint);
-        console.log(`[EntityManager] Received paged result:`, result);
+        // Try to get paginated data first
+        const result = await apiService.get<PagedResult<T> | T[]>(fullEndpoint);
+        console.log(`[EntityManager] Received result:`, result);
 
-        setData(result.items || []);
-        setTotalCount(result.totalCount || 0);
+        if (result && typeof result === "object" && "items" in result) {
+          // It's a paginated result
+          setData(result.items || []);
+          setTotalCount(result.totalCount || 0);
+        } else if (Array.isArray(result)) {
+          // It's a direct array
+          setData(result);
+          setTotalCount(result.length);
+        } else {
+          // Single object or unexpected format
+          setData(result ? [result] : []);
+          setTotalCount(result ? 1 : 0);
+        }
       } catch (error: any) {
         console.log(
           `[EntityManager] Paged request failed, trying fallback approaches:`,
           error
         );
 
-        if (error.response?.status === 404 || !searchTerm) {
-          try {
-            const result = await apiService.get<T[]>(apiEndpoint);
-            console.log(`[EntityManager] Fallback array result:`, result);
+        // Try without pagination parameters
+        try {
+          const fallbackEndpoint = searchTerm
+            ? `${apiEndpoint}?search=${encodeURIComponent(searchTerm)}`
+            : apiEndpoint;
+          const result = await apiService.get<T[] | PagedResult<T> | T>(
+            fallbackEndpoint
+          );
+          console.log(`[EntityManager] Fallback result:`, result);
 
-            const resultArray = Array.isArray(result) ? result : [result];
-            setData(resultArray);
-            setTotalCount(resultArray.length);
-          } catch (singleError) {
-            console.log(
-              `[EntityManager] Array request failed, trying single entity:`,
-              singleError
-            );
-
-            try {
-              const singleResult = await apiService.get<T>(apiEndpoint);
-              console.log(
-                `[EntityManager] Single entity result:`,
-                singleResult
-              );
-
-              setData(singleResult ? [singleResult] : []);
-              setTotalCount(singleResult ? 1 : 0);
-            } catch (finalError) {
-              console.error(`[EntityManager] All requests failed:`, finalError);
-              setData([]);
-              setTotalCount(0);
-              toast.error(`Failed to load ${entityNamePlural}`);
-            }
+          if (result && typeof result === "object" && "items" in result) {
+            // It's a paginated result
+            setData(result.items || []);
+            setTotalCount(result.totalCount || 0);
+          } else if (Array.isArray(result)) {
+            // It's a direct array
+            setData(result);
+            setTotalCount(result.length);
+          } else {
+            // Single object or unexpected format
+            setData(result ? [result] : []);
+            setTotalCount(result ? 1 : 0);
           }
-        } else {
-          throw error;
+        } catch (finalError) {
+          console.error(`[EntityManager] All requests failed:`, finalError);
+          setData([]);
+          setTotalCount(0);
+          toast.error(`Failed to load ${entityNamePlural}`);
         }
       }
     } catch (error) {
@@ -294,9 +302,18 @@ function EntityManager<T extends { id: number | string }>({
       }
 
       setIsModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error saving ${entityName}:`, error);
-      toast.error(`Failed to save ${entityName}`);
+
+      // Try to get a more specific error message
+      let errorMessage = `Failed to save ${entityName}`;
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setFormLoading(false);
     }

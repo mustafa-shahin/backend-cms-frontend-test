@@ -1,6 +1,7 @@
 // src/config/entities/productConfig.tsx
+import React from "react";
 import { EntityManagerConfig } from "../../components/entities/EntityManager";
-import { Category, FormField, Product } from "../../types";
+import { FormField, Product, Category } from "../../types";
 import {
   createCheckboxField,
   createNumberField,
@@ -13,7 +14,6 @@ import { format } from "date-fns";
 import ImageSelector from "../../components/ui/ImageSelector";
 import ProductVariantManager from "../../components/ui/ProductVariantManager";
 import { apiService } from "../../Services/ApiServices";
-import React from "react";
 
 export const productEntityConfig: EntityManagerConfig<Product> = {
   entityName: "Product",
@@ -311,6 +311,24 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     return null;
   },
   onBeforeCreate: (data) => {
+    console.log("[ProductConfig] onBeforeCreate called with data:", data);
+
+    // Clean and validate numeric fields
+    const cleanNumericField = (value: any): number | null => {
+      if (value === "" || value === null || value === undefined) {
+        return null;
+      }
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    // Clean up price fields
+    data.price = cleanNumericField(data.price) || 0;
+    data.compareAtPrice = cleanNumericField(data.compareAtPrice);
+    data.costPerItem = cleanNumericField(data.costPerItem);
+    data.weight = cleanNumericField(data.weight) || 0;
+    data.quantity = parseInt(data.quantity) || 0;
+
     // Transform imageIds to images array
     if (data.imageIds && Array.isArray(data.imageIds)) {
       data.images = data.imageIds.map((fileId: number, index: number) => ({
@@ -321,46 +339,119 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
         caption: "",
       }));
       delete data.imageIds;
+    } else {
+      data.images = [];
+    }
+
+    // Transform variants from ProductVariantManager format to API format
+    if (data.variants && Array.isArray(data.variants)) {
+      data.variants = data.variants.map((variant: any) => ({
+        title: variant.title || "",
+        sku: variant.sku || "",
+        price: cleanNumericField(variant.price) || 0,
+        compareAtPrice: cleanNumericField(variant.compareAtPrice),
+        costPerItem: cleanNumericField(variant.costPerItem),
+        quantity: parseInt(variant.quantity) || 0,
+        trackQuantity: Boolean(variant.trackQuantity),
+        continueSellingWhenOutOfStock: Boolean(
+          variant.continueSellingWhenOutOfStock
+        ),
+        requiresShipping: Boolean(variant.requiresShipping),
+        isTaxable: Boolean(variant.isTaxable),
+        weight: cleanNumericField(variant.weight) || 0,
+        weightUnit: variant.weightUnit || "kg",
+        barcode: variant.barcode || "",
+        position: parseInt(variant.position) || 0,
+        isDefault: Boolean(variant.isDefault),
+        customFields: variant.customFields || {},
+        option1: variant.option1 || "",
+        option2: variant.option2 || "",
+        option3: variant.option3 || "",
+        images: Array.isArray(variant.images)
+          ? variant.images.map((img: any, index: number) => ({
+              fileId: img.fileId,
+              position: index,
+              isFeatured: index === 0,
+              alt: img.alt || "",
+              caption: img.caption || "",
+            }))
+          : [],
+      }));
+    } else {
+      data.variants = [];
     }
 
     // Set hasVariants based on variants array
     data.hasVariants = data.variants && data.variants.length > 0;
 
-    // Set default values
+    // Ensure boolean fields are properly set
+    data.trackQuantity = Boolean(data.trackQuantity);
+    data.continueSellingWhenOutOfStock = Boolean(
+      data.continueSellingWhenOutOfStock
+    );
+    data.requiresShipping = Boolean(data.requiresShipping);
+    data.isPhysicalProduct = Boolean(data.isPhysicalProduct);
+    data.isTaxable = Boolean(data.isTaxable);
+
+    // Set default values for objects
     data.customFields = data.customFields || {};
     data.seoSettings = data.seoSettings || {};
     data.categoryIds = data.categoryIds || [];
 
+    // Ensure string fields are not null
+    data.name = data.name || "";
+    data.slug = data.slug || "";
+    data.sku = data.sku || "";
+    data.description = data.description || "";
+    data.shortDescription = data.shortDescription || "";
+    data.vendor = data.vendor || "";
+    data.barcode = data.barcode || "";
+    data.tags = data.tags || "";
+    data.metaTitle = data.metaTitle || "";
+    data.metaDescription = data.metaDescription || "";
+    data.metaKeywords = data.metaKeywords || "";
+    data.searchKeywords = data.searchKeywords || "";
+    data.template = data.template || "";
+    data.weightUnit = data.weightUnit || "kg";
+
+    // Ensure enum fields have valid values
+    data.status =
+      data.status !== undefined ? parseInt(data.status) : ProductStatus.Draft;
+    data.type =
+      data.type !== undefined ? parseInt(data.type) : ProductType.Physical;
+
+    console.log("[ProductConfig] onBeforeCreate returning cleaned data:", data);
     return data;
   },
   onBeforeUpdate: (data, entity) => {
-    // Transform imageIds to images array
-    if (data.imageIds && Array.isArray(data.imageIds)) {
-      data.images = data.imageIds.map((fileId: number, index: number) => ({
-        fileId,
-        position: index,
-        isFeatured: index === 0,
-        alt: "",
-        caption: "",
-      }));
-      delete data.imageIds;
-    }
+    console.log(
+      "[ProductConfig] onBeforeUpdate called with data:",
+      data,
+      "entity:",
+      entity
+    );
 
-    // Set hasVariants based on variants array
-    data.hasVariants = data.variants && data.variants.length > 0;
-
-    // Set default values
-    data.categoryIds = data.categoryIds || [];
-
-    return data;
+    // Use the same cleaning logic as create
+    return productEntityConfig.onBeforeCreate!(data);
   },
   transformDataForForm: (product) => {
+    console.log(
+      "[ProductConfig] transformDataForForm called with product:",
+      product
+    );
+
     const transformed = {
       ...product,
       imageIds: product.images?.map((img) => img.fileId) || [],
       variants: product.variants || [],
       categoryIds: product.categories?.map((cat) => cat.id) || [],
+      // Ensure numeric fields are properly formatted for form inputs
+      compareAtPrice: product.compareAtPrice || "",
+      costPerItem: product.costPerItem || "",
+      weight: product.weight || 0,
     };
+
+    console.log("[ProductConfig] transformDataForForm returning:", transformed);
     return transformed;
   },
 };
