@@ -179,11 +179,24 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleDeleteVariant = (variantId: number) => {
-    if (window.confirm("Are you sure you want to delete this variant?")) {
+  const handleDeleteVariant = async (variantId: number) => {
+    if (!window.confirm("Are you sure you want to delete this variant?")) {
+      return;
+    }
+
+    try {
+      if (productId && variantId > 0) {
+        // If we have a real product ID and variant ID, delete from API
+        await apiService.delete(`/productvariant/${variantId}`);
+        toast.success("Variant deleted successfully");
+      }
+
+      // Update local state
       const updatedVariants = variants.filter((v) => v.id !== variantId);
       onVariantsChange(updatedVariants);
-      toast.success("Variant deleted successfully");
+    } catch (error) {
+      console.error("Error deleting variant:", error);
+      toast.error("Failed to delete variant");
     }
   };
 
@@ -191,110 +204,133 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     try {
       setLoading(true);
 
-      if (editingVariant) {
-        // Update existing variant
-        const updatedVariant: ProductVariant = {
-          ...editingVariant,
-          ...formData,
-          images: formData.imageIds.map((fileId, index) => ({
-            id: editingVariant.images[index]?.id || Date.now() + index,
-            productVariantId: editingVariant.id,
-            fileId,
-            alt: "",
-            caption: "",
-            position: index,
-            isFeatured: index === 0,
-            imageUrl: apiService.getImageUrl(fileId, "download") || "",
-            thumbnailUrl: apiService.getImageUrl(fileId, "thumbnail") || "",
-            createdAt: editingVariant.createdAt,
-            updatedAt: new Date().toISOString(),
-          })),
-          isAvailable:
-            formData.quantity > 0 || formData.continueSellingWhenOutOfStock,
-          discountPercentage: formData.compareAtPrice
-            ? Math.round(
-                ((formData.compareAtPrice - formData.price) /
-                  formData.compareAtPrice) *
-                  100
-              )
-            : undefined,
-          displayTitle: formData.title || generateDisplayTitle(formData),
-          featuredImageUrl:
-            apiService.getFeaturedImageUrl(
-              formData.imageIds.map((fileId, index) => ({
-                fileId,
-                isFeatured: index === 0,
-                position: index,
-              }))
-            ) || undefined,
-          updatedAt: new Date().toISOString(),
-        };
-
-        const updatedVariants = variants.map((v) =>
-          v.id === editingVariant.id ? updatedVariant : v
-        );
-        onVariantsChange(updatedVariants);
-        toast.success("Variant updated successfully");
-      } else {
-        // Create new variant
-        const newVariant: ProductVariant = {
-          id: Date.now(), // Temporary ID for local state
-          productId: productId || 0,
-          ...formData,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          images: formData.imageIds.map((fileId, index) => ({
-            id: Date.now() + index,
-            productVariantId: Date.now(),
-            fileId,
-            alt: "",
-            caption: "",
-            position: index,
-            isFeatured: index === 0,
-            imageUrl: apiService.getImageUrl(fileId, "download") || "",
-            thumbnailUrl: apiService.getImageUrl(fileId, "thumbnail") || "",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          })),
-          isAvailable:
-            formData.quantity > 0 || formData.continueSellingWhenOutOfStock,
-          discountPercentage: formData.compareAtPrice
-            ? Math.round(
-                ((formData.compareAtPrice - formData.price) /
-                  formData.compareAtPrice) *
-                  100
-              )
-            : undefined,
-          displayTitle: formData.title || generateDisplayTitle(formData),
-          featuredImageUrl:
-            apiService.getFeaturedImageUrl(
-              formData.imageIds.map((fileId, index) => ({
-                fileId,
-                isFeatured: index === 0,
-                position: index,
-              }))
-            ) || undefined,
-        };
-
-        // If this is the first variant or marked as default, make it default
-        let updatedVariants = [...variants];
-        if (variants.length === 0 || formData.isDefault) {
-          // Remove default from other variants
-          updatedVariants = updatedVariants.map((v) => ({
-            ...v,
-            isDefault: false,
-          }));
-          newVariant.isDefault = true;
+      // Clean and validate numeric fields
+      const cleanNumericField = (value: any): number | undefined => {
+        if (value === "" || value === null || value === undefined) {
+          return undefined;
         }
-        updatedVariants.push(newVariant);
-        onVariantsChange(updatedVariants);
+        const parsed = parseFloat(value);
+        return isNaN(parsed) ? undefined : parsed;
+      };
+
+      // Prepare the variant data
+      const variantData = {
+        ...formData,
+        price: cleanNumericField(formData.price) || 0,
+        compareAtPrice: cleanNumericField(formData.compareAtPrice),
+        costPerItem: cleanNumericField(formData.costPerItem),
+        weight: cleanNumericField(formData.weight) || 0,
+        quantity: parseInt(String(formData.quantity)) || 0,
+        images: formData.imageIds.map((fileId, index) => ({
+          fileId,
+          position: index,
+          isFeatured: index === 0,
+          alt: "",
+          caption: "",
+        })),
+      };
+
+      let updatedVariant: ProductVariant;
+
+      if (editingVariant && editingVariant.id > 0 && productId) {
+        // Update existing variant via API
+        updatedVariant = await apiService.put<ProductVariant>(
+          `/productvariant/${editingVariant.id}`,
+          variantData
+        );
+        toast.success("Variant updated successfully");
+      } else if (productId) {
+        // Create new variant via API
+        updatedVariant = await apiService.post<ProductVariant>(
+          `/product/${productId}/variant`,
+          variantData
+        );
         toast.success("Variant created successfully");
+      } else {
+        // For new products, create a local variant object
+        updatedVariant = {
+          id: editingVariant?.id || -Date.now(), // Negative ID for local variants
+          productId: productId || 0,
+          title: variantData.title,
+          sku: variantData.sku,
+          price: variantData.price,
+          compareAtPrice: variantData.compareAtPrice,
+          costPerItem: variantData.costPerItem,
+          quantity: variantData.quantity,
+          trackQuantity: variantData.trackQuantity,
+          continueSellingWhenOutOfStock:
+            variantData.continueSellingWhenOutOfStock,
+          requiresShipping: variantData.requiresShipping,
+          isTaxable: variantData.isTaxable,
+          weight: variantData.weight,
+          weightUnit: variantData.weightUnit,
+          barcode: variantData.barcode,
+          position: variantData.position,
+          isDefault: variantData.isDefault,
+          customFields: variantData.customFields,
+          option1: variantData.option1,
+          option2: variantData.option2,
+          option3: variantData.option3,
+          createdAt: editingVariant?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          images: variantData.images.map((img: any, index: number) => ({
+            id: editingVariant?.images?.[index]?.id || -(Date.now() + index),
+            productVariantId: editingVariant?.id || -Date.now(),
+            fileId: img.fileId,
+            alt: img.alt || "",
+            caption: img.caption || "",
+            position: index,
+            isFeatured: index === 0,
+            imageUrl: apiService.getImageUrl(img.fileId, "download") || "",
+            thumbnailUrl: apiService.getImageUrl(img.fileId, "thumbnail") || "",
+            createdAt: editingVariant?.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })),
+          isAvailable:
+            variantData.quantity > 0 ||
+            variantData.continueSellingWhenOutOfStock,
+          discountPercentage: variantData.compareAtPrice
+            ? Math.round(
+                ((variantData.compareAtPrice - variantData.price) /
+                  variantData.compareAtPrice) *
+                  100
+              )
+            : undefined,
+          displayTitle: variantData.title || generateDisplayTitle(variantData),
+          featuredImageUrl:
+            apiService.getFeaturedImageUrl(
+              variantData.images.map((img: any, index: number) => ({
+                fileId: img.fileId,
+                isFeatured: index === 0,
+                position: index,
+              }))
+            ) || undefined,
+        };
       }
 
+      // Update local state
+      let updatedVariants = [...variants];
+      if (editingVariant) {
+        updatedVariants = updatedVariants.map((v) =>
+          v.id === editingVariant.id ? updatedVariant : v
+        );
+      } else {
+        updatedVariants.push(updatedVariant);
+      }
+
+      // If this is the first variant or marked as default, make it default
+      if (variants.length === 0 || formData.isDefault) {
+        updatedVariants = updatedVariants.map((v) => ({
+          ...v,
+          isDefault: v.id === updatedVariant.id,
+        }));
+      }
+
+      onVariantsChange(updatedVariants);
       setIsModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving variant:", error);
-      toast.error("Failed to save variant");
+      toast.error(error.response?.data?.message || "Failed to save variant");
     } finally {
       setLoading(false);
     }
@@ -309,13 +345,24 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
       : variant.title || "Default";
   };
 
-  const setDefaultVariant = (variantId: number) => {
-    const updatedVariants = variants.map((v) => ({
-      ...v,
-      isDefault: v.id === variantId,
-    }));
-    onVariantsChange(updatedVariants);
-    toast.success("Default variant updated");
+  const setDefaultVariant = async (variantId: number) => {
+    try {
+      if (productId && variantId > 0) {
+        // If we have a real product ID and variant ID, update via API
+        await apiService.put(`/productvariant/${variantId}/set-default`, {});
+      }
+
+      // Update local state
+      const updatedVariants = variants.map((v) => ({
+        ...v,
+        isDefault: v.id === variantId,
+      }));
+      onVariantsChange(updatedVariants);
+      toast.success("Default variant updated");
+    } catch (error) {
+      console.error("Error setting default variant:", error);
+      toast.error("Failed to update default variant");
+    }
   };
 
   const renderVariantCard = (variant: ProductVariant) => {
@@ -736,7 +783,6 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                           }
                           placeholder={field.placeholder}
                           min={field.min}
-                          // max={field.max}
                           step={field.step}
                           className={baseInputClasses}
                         />

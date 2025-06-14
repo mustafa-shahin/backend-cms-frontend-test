@@ -166,6 +166,26 @@ export const categoryEntityConfig: EntityManagerConfig<Category> = {
     return null;
   },
   onBeforeCreate: (data) => {
+    // Clean and validate fields
+    data.name = data.name || "";
+    data.slug = data.slug || "";
+    data.description = data.description || "";
+    data.shortDescription = data.shortDescription || "";
+    data.metaTitle = data.metaTitle || "";
+    data.metaDescription = data.metaDescription || "";
+    data.metaKeywords = data.metaKeywords || "";
+
+    // Handle numeric fields
+    data.sortOrder = parseInt(String(data.sortOrder)) || 0;
+    data.parentCategoryId =
+      data.parentCategoryId && parseInt(String(data.parentCategoryId)) > 0
+        ? parseInt(String(data.parentCategoryId))
+        : null;
+
+    // Handle boolean fields
+    data.isActive = Boolean(data.isActive);
+    data.isVisible = Boolean(data.isVisible);
+
     // Transform imageIds to images array
     if (data.imageIds && Array.isArray(data.imageIds)) {
       data.images = data.imageIds.map((fileId: number, index: number) => ({
@@ -176,6 +196,8 @@ export const categoryEntityConfig: EntityManagerConfig<Category> = {
         caption: "",
       }));
       delete data.imageIds;
+    } else {
+      data.images = [];
     }
 
     // Set default values
@@ -184,23 +206,18 @@ export const categoryEntityConfig: EntityManagerConfig<Category> = {
     return data;
   },
   onBeforeUpdate: (data, entity) => {
-    // Transform imageIds to images array
-    if (data.imageIds && Array.isArray(data.imageIds)) {
-      data.images = data.imageIds.map((fileId: number, index: number) => ({
-        fileId,
-        position: index,
-        isFeatured: index === 0,
-        alt: "",
-        caption: "",
-      }));
-      delete data.imageIds;
-    }
-    return data;
+    // Use the same cleaning logic as create
+    return categoryEntityConfig.onBeforeCreate!(data);
   },
   transformDataForForm: (category) => {
     const transformed = {
       ...category,
       imageIds: category.images?.map((img) => img.fileId) || [],
+      // Ensure proper form values
+      parentCategoryId: category.parentCategoryId || "",
+      sortOrder: category.sortOrder || 0,
+      isActive: Boolean(category.isActive),
+      isVisible: Boolean(category.isVisible),
     };
     return transformed;
   },

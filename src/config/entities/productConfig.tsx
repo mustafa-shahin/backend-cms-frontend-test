@@ -213,9 +213,9 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       "status",
       "Status",
       [
-        { value: ProductStatus.Draft, label: "Draft" },
-        { value: ProductStatus.Active, label: "Active" },
-        { value: ProductStatus.Archived, label: "Archived" },
+        { value: 0, label: "Draft" },
+        { value: 1, label: "Active" },
+        { value: 2, label: "Archived" },
       ],
       {
         required: true,
@@ -226,10 +226,10 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       "type",
       "Product Type",
       [
-        { value: ProductType.Physical, label: "Physical" },
-        { value: ProductType.Digital, label: "Digital" },
-        { value: ProductType.Service, label: "Service" },
-        { value: ProductType.GiftCard, label: "Gift Card" },
+        { value: 0, label: "Physical" },
+        { value: 1, label: "Digital" },
+        { value: 2, label: "Service" },
+        { value: 3, label: "Gift Card" },
       ],
       {
         required: true,
@@ -414,11 +414,16 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     data.template = data.template || "";
     data.weightUnit = data.weightUnit || "kg";
 
-    // Ensure enum fields have valid values
+    // Handle enum fields - ensure they are integers
     data.status =
-      data.status !== undefined ? parseInt(data.status) : ProductStatus.Draft;
+      data.status !== undefined && data.status !== null && data.status !== ""
+        ? parseInt(String(data.status))
+        : 0; // Default to Draft
+
     data.type =
-      data.type !== undefined ? parseInt(data.type) : ProductType.Physical;
+      data.type !== undefined && data.type !== null && data.type !== ""
+        ? parseInt(String(data.type))
+        : 0; // Default to Physical
 
     console.log("[ProductConfig] onBeforeCreate returning cleaned data:", data);
     return data;
@@ -449,6 +454,9 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       compareAtPrice: product.compareAtPrice || "",
       costPerItem: product.costPerItem || "",
       weight: product.weight || 0,
+      // Ensure enum fields are proper integers for select fields
+      status: product.status !== undefined ? product.status : 0,
+      type: product.type !== undefined ? product.type : 0,
     };
 
     console.log("[ProductConfig] transformDataForForm returning:", transformed);

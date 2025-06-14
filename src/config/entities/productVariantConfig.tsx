@@ -198,6 +198,41 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
     return null;
   },
   onBeforeCreate: (data) => {
+    // Clean and validate numeric fields
+    const cleanNumericField = (value: any): number | null => {
+      if (value === "" || value === null || value === undefined) {
+        return null;
+      }
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    // Clean up fields
+    data.title = data.title || "";
+    data.sku = data.sku || "";
+    data.barcode = data.barcode || "";
+    data.option1 = data.option1 || "";
+    data.option2 = data.option2 || "";
+    data.option3 = data.option3 || "";
+    data.weightUnit = data.weightUnit || "kg";
+
+    // Handle numeric fields
+    data.price = cleanNumericField(data.price) || 0;
+    data.compareAtPrice = cleanNumericField(data.compareAtPrice);
+    data.costPerItem = cleanNumericField(data.costPerItem);
+    data.weight = cleanNumericField(data.weight) || 0;
+    data.quantity = parseInt(String(data.quantity)) || 0;
+    data.position = parseInt(String(data.position)) || 0;
+
+    // Handle boolean fields
+    data.trackQuantity = Boolean(data.trackQuantity);
+    data.continueSellingWhenOutOfStock = Boolean(
+      data.continueSellingWhenOutOfStock
+    );
+    data.requiresShipping = Boolean(data.requiresShipping);
+    data.isTaxable = Boolean(data.isTaxable);
+    data.isDefault = Boolean(data.isDefault);
+
     // Transform imageIds to images array
     if (data.imageIds && Array.isArray(data.imageIds)) {
       data.images = data.imageIds.map((fileId: number, index: number) => ({
@@ -208,6 +243,8 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
         caption: "",
       }));
       delete data.imageIds;
+    } else {
+      data.images = [];
     }
 
     // Set default values
@@ -216,24 +253,31 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
     return data;
   },
   onBeforeUpdate: (data, entity) => {
-    // Transform imageIds to images array
-    if (data.imageIds && Array.isArray(data.imageIds)) {
-      data.images = data.imageIds.map((fileId: number, index: number) => ({
-        fileId,
-        position: index,
-        isFeatured: index === 0,
-        alt: "",
-        caption: "",
-      }));
-      delete data.imageIds;
-    }
-
-    return data;
+    // Use the same cleaning logic as create
+    return productVariantEntityConfig.onBeforeCreate!(data);
   },
   transformDataForForm: (variant) => {
     const transformed = {
       ...variant,
       imageIds: variant.images?.map((img) => img.fileId) || [],
+      // Ensure proper form values
+      compareAtPrice: variant.compareAtPrice || "",
+      costPerItem: variant.costPerItem || "",
+      weight: variant.weight || 0,
+      quantity: variant.quantity || 0,
+      position: variant.position || 0,
+      trackQuantity: Boolean(variant.trackQuantity),
+      continueSellingWhenOutOfStock: Boolean(
+        variant.continueSellingWhenOutOfStock
+      ),
+      requiresShipping: Boolean(variant.requiresShipping),
+      isTaxable: Boolean(variant.isTaxable),
+      isDefault: Boolean(variant.isDefault),
+      barcode: variant.barcode || "",
+      option1: variant.option1 || "",
+      option2: variant.option2 || "",
+      option3: variant.option3 || "",
+      weightUnit: variant.weightUnit || "kg",
     };
     return transformed;
   },
