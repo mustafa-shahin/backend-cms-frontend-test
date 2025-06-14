@@ -10,6 +10,7 @@ import {
 } from "../../types/Product";
 import { Button, Icon, Modal } from "../common";
 import ImageSelector from "./ImageSelector";
+import { apiService } from "../../Services/ApiServices";
 import toast from "react-hot-toast";
 
 interface ProductVariantManagerProps {
@@ -36,7 +37,6 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     handleSubmit,
     formState: { errors },
     reset,
-    // watch, // Removed as it's not being used
   } = useForm<CreateProductVariant | UpdateProductVariant>({
     defaultValues: {
       title: "",
@@ -159,9 +159,13 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                 displayTitle:
                   variantData.title || generateDisplayTitle(variantData),
                 featuredImageUrl:
-                  images.length > 0
-                    ? `/api/files/${images[0].fileId}/download`
-                    : undefined,
+                  apiService.getFeaturedImageUrl(
+                    images.map((img) => ({
+                      fileId: img.fileId,
+                      isFeatured: img.isFeatured,
+                      position: img.position,
+                    }))
+                  ) || undefined,
                 images: images.map((img, idx) => ({
                   id: editingVariant.images[idx]?.id || Date.now() + idx,
                   productVariantId: editingVariant.id,
@@ -170,8 +174,10 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                   caption: img.caption,
                   position: img.position,
                   isFeatured: img.isFeatured,
-                  imageUrl: `/api/files/${img.fileId}/download`,
-                  thumbnailUrl: `/api/files/${img.fileId}/thumbnail`,
+                  imageUrl:
+                    apiService.getImageUrl(img.fileId, "download") || "",
+                  thumbnailUrl:
+                    apiService.getImageUrl(img.fileId, "thumbnail") || "",
                   createdAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
                 })),
@@ -200,9 +206,13 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
             : undefined,
           displayTitle: variantData.title || generateDisplayTitle(variantData),
           featuredImageUrl:
-            images.length > 0
-              ? `/api/files/${images[0].fileId}/download`
-              : undefined,
+            apiService.getFeaturedImageUrl(
+              images.map((img) => ({
+                fileId: img.fileId,
+                isFeatured: img.isFeatured,
+                position: img.position,
+              }))
+            ) || undefined,
           images: images.map((img, idx) => ({
             id: Date.now() + idx,
             productVariantId: Date.now(),
@@ -211,8 +221,8 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
             caption: img.caption,
             position: img.position,
             isFeatured: img.isFeatured,
-            imageUrl: `/api/files/${img.fileId}/download`,
-            thumbnailUrl: `/api/files/${img.fileId}/thumbnail`,
+            imageUrl: apiService.getImageUrl(img.fileId, "download") || "",
+            thumbnailUrl: apiService.getImageUrl(img.fileId, "thumbnail") || "",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           })),
@@ -262,130 +272,140 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     toast.success("Default variant updated");
   };
 
-  const renderVariantCard = (variant: ProductVariant) => (
-    <div
-      key={variant.id}
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-colors ${
-        variant.isDefault
-          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
-          : "border-gray-200 dark:border-gray-700"
-      }`}
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <div className="flex items-center space-x-2">
-            <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-              {variant.displayTitle}
-            </h4>
-            {variant.isDefault && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
-                Default
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            SKU: {variant.sku}
-          </p>
-        </div>
+  const renderVariantCard = (variant: ProductVariant) => {
+    const featuredImageUrl = apiService.getFeaturedImageUrl(
+      variant.images || []
+    );
 
-        {!isReadonly && (
-          <div className="flex items-center space-x-1">
-            <Button
-              size="xs"
-              variant="ghost"
-              leftIcon="edit"
-              onClick={() => handleEditVariant(variant)}
-            >
-              Edit
-            </Button>
-            <Button
-              size="xs"
-              variant="ghost"
-              leftIcon="trash"
-              onClick={() => handleDeleteVariant(variant.id)}
-              className="text-red-600 hover:text-red-700"
-            >
-              Delete
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Variant Image */}
-      {variant.featuredImageUrl && (
-        <div className="mb-3">
-          <img
-            src={variant.featuredImageUrl}
-            alt={variant.displayTitle}
-            className="w-full h-20 object-cover rounded"
-          />
-        </div>
-      )}
-
-      {/* Variant Details */}
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        <div>
-          <span className="font-medium text-gray-700 dark:text-gray-300">
-            Price:
-          </span>
-          <div className="flex items-center space-x-1">
-            <span className="text-gray-900 dark:text-white">
-              ${variant.price.toFixed(2)}
-            </span>
-            {variant.compareAtPrice &&
-              variant.compareAtPrice > variant.price && (
-                <span className="text-gray-500 line-through">
-                  ${variant.compareAtPrice.toFixed(2)}
+    return (
+      <div
+        key={variant.id}
+        className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-colors ${
+          variant.isDefault
+            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
+            : "border-gray-200 dark:border-gray-700"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1">
+            <div className="flex items-center space-x-2">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                {variant.displayTitle}
+              </h4>
+              {variant.isDefault && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
+                  Default
                 </span>
               )}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              SKU: {variant.sku}
+            </p>
           </div>
+
+          {!isReadonly && (
+            <div className="flex items-center space-x-1">
+              <Button
+                size="xs"
+                variant="ghost"
+                leftIcon="edit"
+                onClick={() => handleEditVariant(variant)}
+              >
+                Edit
+              </Button>
+              <Button
+                size="xs"
+                variant="ghost"
+                leftIcon="trash"
+                onClick={() => handleDeleteVariant(variant.id)}
+                className="text-red-600 hover:text-red-700"
+              >
+                Delete
+              </Button>
+            </div>
+          )}
         </div>
-        <div>
-          <span className="font-medium text-gray-700 dark:text-gray-300">
-            Stock:
-          </span>
-          <span
-            className={`ml-1 ${
-              variant.quantity === 0
-                ? "text-red-600 dark:text-red-400"
-                : variant.quantity < 10
-                ? "text-yellow-600 dark:text-yellow-400"
-                : "text-green-600 dark:text-green-400"
-            }`}
-          >
-            {variant.quantity}
-          </span>
-        </div>
-        {(variant.option1 || variant.option2 || variant.option3) && (
-          <div className="col-span-2">
+
+        {/* Variant Image */}
+        {featuredImageUrl && (
+          <div className="mb-3">
+            <img
+              src={featuredImageUrl}
+              alt={variant.displayTitle}
+              className="w-full h-20 object-cover rounded"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
+              }}
+            />
+          </div>
+        )}
+
+        {/* Variant Details */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div>
             <span className="font-medium text-gray-700 dark:text-gray-300">
-              Options:
+              Price:
             </span>
-            <span className="ml-1 text-gray-900 dark:text-white">
-              {[variant.option1, variant.option2, variant.option3]
-                .filter(Boolean)
-                .join(" / ")}
+            <div className="flex items-center space-x-1">
+              <span className="text-gray-900 dark:text-white">
+                ${variant.price.toFixed(2)}
+              </span>
+              {variant.compareAtPrice &&
+                variant.compareAtPrice > variant.price && (
+                  <span className="text-gray-500 line-through">
+                    ${variant.compareAtPrice.toFixed(2)}
+                  </span>
+                )}
+            </div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-700 dark:text-gray-300">
+              Stock:
             </span>
+            <span
+              className={`ml-1 ${
+                variant.quantity === 0
+                  ? "text-red-600 dark:text-red-400"
+                  : variant.quantity < 10
+                  ? "text-yellow-600 dark:text-yellow-400"
+                  : "text-green-600 dark:text-green-400"
+              }`}
+            >
+              {variant.quantity}
+            </span>
+          </div>
+          {(variant.option1 || variant.option2 || variant.option3) && (
+            <div className="col-span-2">
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                Options:
+              </span>
+              <span className="ml-1 text-gray-900 dark:text-white">
+                {[variant.option1, variant.option2, variant.option3]
+                  .filter(Boolean)
+                  .join(" / ")}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        {!isReadonly && !variant.isDefault && (
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => setDefaultVariant(variant.id)}
+              className="w-full"
+            >
+              Set as Default
+            </Button>
           </div>
         )}
       </div>
-
-      {/* Actions */}
-      {!isReadonly && !variant.isDefault && (
-        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-          <Button
-            size="xs"
-            variant="outline"
-            onClick={() => setDefaultVariant(variant.id)}
-            className="w-full"
-          >
-            Set as Default
-          </Button>
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   // Define a type for your form fields to ensure type safety
   type FormField = {
@@ -657,7 +677,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                         <textarea
                           id={field.name}
                           {...fieldProps}
-                          value={(value as string) || ""} // Explicitly cast to string
+                          value={(value as string) || ""}
                           onChange={onChange}
                           placeholder={field.placeholder}
                           rows={3}
@@ -670,7 +690,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                         <select
                           id={field.name}
                           {...fieldProps}
-                          value={(value as string) || ""} // Explicitly cast to string
+                          value={(value as string) || ""}
                           onChange={onChange}
                           className={baseInputClasses}
                         >
@@ -690,7 +710,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                             id={field.name}
                             {...fieldProps}
                             type="checkbox"
-                            checked={value as boolean} // Explicitly cast to boolean
+                            checked={value as boolean}
                             onChange={(e) => onChange(e.target.checked)}
                             className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
                           />
@@ -713,7 +733,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                             (value as number | string) === 0
                               ? 0
                               : (value as number | string) || ""
-                          } // Handle 0 explicitly, and cast
+                          }
                           onChange={(e) =>
                             onChange(e.target.valueAsNumber || e.target.value)
                           }
@@ -731,7 +751,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                           id={field.name}
                           {...fieldProps}
                           type={field.type}
-                          value={(value as string) || ""} // Explicitly cast to string
+                          value={(value as string) || ""}
                           onChange={onChange}
                           placeholder={field.placeholder}
                           className={baseInputClasses}

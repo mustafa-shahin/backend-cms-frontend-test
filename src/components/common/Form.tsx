@@ -81,7 +81,7 @@ const Form: React.FC<FormProps> = ({
               formData
             );
 
-            // Wrap any non-null/non-undefined value in a fragment
+            // If custom renderer returns something, return it directly (it should handle its own label)
             if (customRender != null) {
               return React.isValidElement(customRender) ? (
                 customRender
@@ -90,6 +90,7 @@ const Form: React.FC<FormProps> = ({
               );
             }
           }
+
           // Default field rendering
           switch (field.type) {
             case "textarea":
@@ -198,32 +199,57 @@ const Form: React.FC<FormProps> = ({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={className}>
       <div className="space-y-6">
-        {fields.map((field) => (
-          <div key={field.name}>
-            {field.type !== "checkbox" && (
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {field.label}
-                {field.required && <span className="text-red-500 ml-1">*</span>}
-              </label>
-            )}
+        {fields.map((field) => {
+          // Check if this field has a custom renderer
+          const hasCustomRenderer =
+            customFieldRenderer &&
+            customFieldRenderer(
+              field,
+              formData[field.name],
+              () => {},
+              errors,
+              formData
+            ) !== null;
 
-            {renderField(field)}
+          return (
+            <div key={field.name}>
+              {/* Only show label if it's not a checkbox and doesn't have a custom renderer */}
+              {field.type !== "checkbox" && !hasCustomRenderer && (
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {field.label}
+                  {field.required && (
+                    <span className="text-red-500 ml-1">*</span>
+                  )}
+                </label>
+              )}
 
-            {field.description && (
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {field.description}
-              </p>
-            )}
+              {renderField(field)}
 
-            {errors[field.name] && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
-                <Icon name="exclamation-triangle" size="xs" className="mr-1" />
-                {(errors[field.name] as any)?.message ||
-                  "This field is required"}
-              </p>
-            )}
-          </div>
-        ))}
+              {/* Only show description and errors if no custom renderer */}
+              {!hasCustomRenderer && (
+                <>
+                  {field.description && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {field.description}
+                    </p>
+                  )}
+
+                  {errors[field.name] && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <Icon
+                        name="exclamation-triangle"
+                        size="xs"
+                        className="mr-1"
+                      />
+                      {(errors[field.name] as any)?.message ||
+                        "This field is required"}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">

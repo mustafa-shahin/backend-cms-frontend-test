@@ -147,11 +147,14 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
   };
 
   const getImageUrl = (file: FileEntity) => {
-    return apiService.getDownloadUrl(`/file/${file.id}/download`);
+    return apiService.getImageUrl(file.id, "download");
   };
 
   const getThumbnailUrl = (file: FileEntity) => {
-    return apiService.getDownloadUrl(`/file/${file.id}/thumbnail`);
+    return (
+      apiService.getImageUrl(file.id, "thumbnail") ||
+      apiService.getImageUrl(file.id, "download")
+    );
   };
 
   const selectedCount = Array.isArray(value)
@@ -165,38 +168,48 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
       {/* Selected Images Display */}
       {selectedImages.length > 0 && (
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Selected Images
-          </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {selectedImages.map((selectedImage, index) => (
-              <div
-                key={selectedImage.id}
-                className="relative group bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden"
-              >
-                <img
-                  src={getThumbnailUrl(selectedImage)}
-                  alt={selectedImage.originalFileName}
-                  className="w-full h-24 object-cover"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center">
-                  <Button
-                    size="xs"
-                    variant="danger"
-                    leftIcon="trash"
-                    onClick={() => removeImage(selectedImage.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    Remove
-                  </Button>
+            {selectedImages.map((selectedImage, index) => {
+              const thumbnailUrl = getThumbnailUrl(selectedImage);
+              return (
+                <div
+                  key={selectedImage.id}
+                  className="relative group bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden"
+                >
+                  {thumbnailUrl ? (
+                    <img
+                      src={thumbnailUrl}
+                      alt={selectedImage.originalFileName}
+                      className="w-full h-24 object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236b7280">Failed to load</text></svg>`;
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                      <Icon name="image" size="lg" className="text-gray-400" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center">
+                    <Button
+                      size="xs"
+                      variant="danger"
+                      leftIcon="trash"
+                      onClick={() => removeImage(selectedImage.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                  <div className="p-2">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                      {selectedImage.originalFileName}
+                    </p>
+                  </div>
                 </div>
-                <div className="p-2">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                    {selectedImage.originalFileName}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -249,46 +262,59 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 max-h-96 overflow-y-auto">
-              {images.map((image) => (
-                <div
-                  key={image.id}
-                  className={`relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${
-                    isSelected(image.id)
-                      ? "ring-2 ring-primary-500 shadow-lg"
-                      : "hover:shadow-md"
-                  }`}
-                  onClick={() => handleImageSelect(image)}
-                >
-                  <img
-                    src={getThumbnailUrl(image)}
-                    alt={image.originalFileName}
-                    className="w-full h-24 object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236b7280">Failed to load</text></svg>`;
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity flex items-center justify-center">
-                    {isSelected(image.id) && (
-                      <div className="absolute top-2 right-2">
+              {images.map((image) => {
+                const thumbnailUrl = getThumbnailUrl(image);
+                return (
+                  <div
+                    key={image.id}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${
+                      isSelected(image.id)
+                        ? "ring-2 ring-primary-500 shadow-lg"
+                        : "hover:shadow-md"
+                    }`}
+                    onClick={() => handleImageSelect(image)}
+                  >
+                    {thumbnailUrl ? (
+                      <img
+                        src={thumbnailUrl}
+                        alt={image.originalFileName}
+                        className="w-full h-24 object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236b7280">Failed to load</text></svg>`;
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                         <Icon
-                          name="check"
-                          size="sm"
-                          className="text-white bg-primary-500 rounded-full p-1"
+                          name="image"
+                          size="lg"
+                          className="text-gray-400"
                         />
                       </div>
                     )}
+                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity flex items-center justify-center">
+                      {isSelected(image.id) && (
+                        <div className="absolute top-2 right-2">
+                          <Icon
+                            name="check"
+                            size="sm"
+                            className="text-white bg-primary-500 rounded-full p-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2 bg-white dark:bg-gray-800">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                        {image.originalFileName}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        {image.fileSizeFormatted}
+                      </p>
+                    </div>
                   </div>
-                  <div className="p-2 bg-white dark:bg-gray-800">
-                    <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                      {image.originalFileName}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {image.fileSizeFormatted}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

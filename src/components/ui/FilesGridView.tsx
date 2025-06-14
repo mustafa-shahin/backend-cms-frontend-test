@@ -5,14 +5,6 @@ import Icon from "../common/Icon";
 import { apiService } from "../../Services/ApiServices";
 import { formatDate } from "../../utils";
 import { FileType } from "../../types/enums";
-interface FilesGridViewProps {
-  files: FileEntity[];
-  loading: boolean;
-  onEdit: (file: FileEntity) => void;
-  onDelete: (file: FileEntity) => void;
-  onDownload: (file: FileEntity) => void;
-  onPreview?: (file: FileEntity) => void;
-}
 
 interface FilesGridViewProps {
   files: FileEntity[];
@@ -67,14 +59,16 @@ const FilesGridView: React.FC<FilesGridViewProps> = ({
 
   const getThumbnailUrl = (file: FileEntity) => {
     if (file.fileType === FileType.Image && file.id) {
-      return apiService.getDownloadUrl(`/file/${file.id}/thumbnail`);
+      return (
+        apiService.getImageUrl(file.id, "thumbnail") ||
+        apiService.getImageUrl(file.id, "download")
+      );
     }
     return null;
   };
 
   const getFileUrl = (file: FileEntity) => {
-    // Use the centralized API service to build the download URL
-    return apiService.getDownloadUrl(`/file/${file.id}/download`);
+    return apiService.getImageUrl(file.id, "download");
   };
 
   if (loading) {

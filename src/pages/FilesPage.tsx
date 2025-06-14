@@ -13,6 +13,7 @@ import Icon from "../components/common/Icon";
 import toast from "react-hot-toast";
 import { FileType } from "../types/enums";
 import { FileEntity } from "../types/FileEntity";
+
 interface FilesPageProps {
   filterType?: "documents" | "images" | "videos" | "audio" | "archives";
 }
@@ -82,29 +83,18 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
 
     for (const file of acceptedFiles) {
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("isPublic", "true");
-        formData.append("generateThumbnail", "true");
-
-        const result = await apiService.post<FileEntity>(
+        const result = await apiService.uploadFile<FileEntity>(
           "/file/upload",
-          formData,
+          file,
+          (progress) => {
+            setUploadProgress((prev) => ({
+              ...prev,
+              [file.name]: progress,
+            }));
+          },
           {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-            onUploadProgress: (progressEvent) => {
-              if (progressEvent.total) {
-                const progress = Math.round(
-                  (progressEvent.loaded * 100) / progressEvent.total
-                );
-                setUploadProgress((prev) => ({
-                  ...prev,
-                  [file.name]: progress,
-                }));
-              }
-            },
+            isPublic: "true",
+            generateThumbnail: "true",
           }
         );
 
@@ -161,16 +151,8 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
   };
 
   const handleDownload = (file: FileEntity) => {
-    console.log("🔗 Using direct link download for file:", file);
+    const downloadUrl = apiService.getDownloadUrl(`/file/${file.id}/download`);
 
-    const token = localStorage.getItem("accessToken");
-    const downloadUrl = `${
-      process.env.REACT_APP_API_URL || "http://localhost:5252/api"
-    }/file/${file.id}/download?token=${encodeURIComponent(token || "")}`;
-
-    console.log("🌐 Direct download URL:", downloadUrl);
-
-    // Create a temporary link and click it
     const link = document.createElement("a");
     link.href = downloadUrl;
     link.download = file.originalFileName;
@@ -207,7 +189,7 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
       icon: "eye",
       variant: "secondary",
       onClick: handlePreview,
-      show: (file) => file.canPreview || false,
+      show: (file) => file.canPreview || file.fileType === FileType.Image,
     },
     {
       label: "Download",
@@ -243,9 +225,18 @@ const FilesPage: React.FC<FilesPageProps> = ({ filterType }) => {
   const renderPreviewContent = () => {
     if (!previewFile) return null;
 
-    const fileUrl = `${
-      process.env.REACT_APP_API_URL || "http://localhost:5252/api"
-    }/file/${previewFile.id}/download`;
+    const fileUrl = apiService.getImageUrl(previewFile.id, "download");
+
+    if (!fileUrl) {
+      return (
+        <div className="text-center py-8">
+          <Icon name="file" size="2xl" className="mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">
+            File preview not available.
+          </p>
+        </div>
+      );
+    }
 
     switch (previewFile.fileType) {
       case FileType.Image:

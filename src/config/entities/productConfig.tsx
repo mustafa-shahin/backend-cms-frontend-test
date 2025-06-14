@@ -12,6 +12,7 @@ import { ProductStatus, ProductType } from "../../types/enums";
 import { format } from "date-fns";
 import ImageSelector from "../../components/ui/ImageSelector";
 import ProductVariantManager from "../../components/ui/ProductVariantManager";
+import { apiService } from "../../Services/ApiServices";
 import React from "react";
 
 export const productEntityConfig: EntityManagerConfig<Product> = {
@@ -21,27 +22,36 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     {
       key: "name",
       label: "Name",
-      render: (name, product) => (
-        <div className="flex items-center">
-          {product.featuredImageUrl && (
-            <div className="flex-shrink-0 h-10 w-10 mr-3">
-              <img
-                src={product.featuredImageUrl}
-                alt={name}
-                className="h-10 w-10 object-cover rounded"
-              />
-            </div>
-          )}
-          <div>
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {name}
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              SKU: {product.sku}
+      render: (name, product) => {
+        const featuredImageUrl = apiService.getFeaturedImageUrl(
+          product.images || []
+        );
+        return (
+          <div className="flex items-center">
+            {featuredImageUrl && (
+              <div className="flex-shrink-0 h-10 w-10 mr-3">
+                <img
+                  src={featuredImageUrl}
+                  alt={name}
+                  className="h-10 w-10 object-cover rounded"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                  }}
+                />
+              </div>
+            )}
+            <div>
+              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                {name}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                SKU: {product.sku}
+              </div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: "price",

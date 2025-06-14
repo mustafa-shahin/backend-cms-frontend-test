@@ -16,6 +16,7 @@ import {
   transformDataForForm,
 } from "./transformFunctions";
 import ImageSelector from "../../components/ui/ImageSelector";
+import { apiService } from "../../Services/ApiServices";
 import React from "react";
 
 export const userEntityConfig: EntityManagerConfig<User> = {
@@ -25,31 +26,50 @@ export const userEntityConfig: EntityManagerConfig<User> = {
     {
       key: "firstName",
       label: "Name",
-      render: (_, user) => (
-        <div className="flex items-center">
-          {user.avatarUrl ? (
-            <div className="flex-shrink-0 h-8 w-8 mr-3">
-              <img
-                src={user.avatarUrl}
-                alt={`${user.firstName} ${user.lastName}`}
-                className="h-8 w-8 rounded-full object-cover"
-              />
-            </div>
-          ) : (
-            <div className="flex-shrink-0 h-8 w-8 mr-3 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
-                {user.firstName?.[0]}
-                {user.lastName?.[0]}
-              </span>
-            </div>
-          )}
-          <div>
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {user.firstName} {user.lastName}
+      render: (_, user) => {
+        const avatarUrl = apiService.getAvatarUrl(user);
+        return (
+          <div className="flex items-center">
+            {avatarUrl ? (
+              <div className="flex-shrink-0 h-8 w-8 mr-3">
+                <img
+                  src={avatarUrl}
+                  alt={`${user.firstName} ${user.lastName}`}
+                  className="h-8 w-8 rounded-full object-cover"
+                  onError={(e) => {
+                    // Fallback to initials if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    const fallback = target.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = "flex";
+                  }}
+                />
+                <div
+                  className="h-8 w-8 mr-3 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center"
+                  style={{ display: "none" }}
+                >
+                  <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                    {user.firstName?.[0]}
+                    {user.lastName?.[0]}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-shrink-0 h-8 w-8 mr-3 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
+                <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                  {user.firstName?.[0]}
+                  {user.lastName?.[0]}
+                </span>
+              </div>
+            )}
+            <div>
+              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                {user.firstName} {user.lastName}
+              </div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: "email",
@@ -155,32 +175,26 @@ export const userEntityConfig: EntityManagerConfig<User> = {
     ...createAddressFields(),
     ...createContactDetailsFields(),
   ] as FormField[],
-  transformDataForForm,
+  transformDataForForm: (user) => {
+    const transformed = transformDataForForm(user);
+    // Ensure avatarFileId is properly set for editing
+    if (user.avatarFileId && user.avatarFileId > 0) {
+      transformed.avatarFileId = user.avatarFileId;
+    } else {
+      transformed.avatarFileId = undefined;
+    }
+    return transformed;
+  },
   transformDataForApi,
   customFormRender: (field, value, onChange, errors, formData) => {
     if (field.name === "avatarFileId") {
       return (
-        <div key={field.name}>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {field.label}
-            {field.required && <span className="text-red-500 ml-1">*</span>}
-          </label>
-          <ImageSelector
-            value={value || undefined}
-            onChange={onChange}
-            multiple={false}
-          />
-          {field.description && (
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {field.description}
-            </p>
-          )}
-          {errors[field.name] && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-              {(errors[field.name] as any)?.message || "This field is required"}
-            </p>
-          )}
-        </div>
+        <ImageSelector
+          key={field.name}
+          value={value || undefined}
+          onChange={onChange}
+          multiple={false}
+        />
       );
     }
 

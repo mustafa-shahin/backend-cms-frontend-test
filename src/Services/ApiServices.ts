@@ -182,7 +182,52 @@ class ApiService {
   getDownloadUrl(path: string): string {
     const token = localStorage.getItem("accessToken");
     const baseUrl = API_CONFIG.BASE_URL;
-    return `${baseUrl}${path}?token=${encodeURIComponent(token || "")}`;
+    // Ensure path starts with /
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    return `${baseUrl}${cleanPath}?token=${encodeURIComponent(token || "")}`;
+  }
+
+  // Helper method to build image URLs for entities
+  getImageUrl(
+    fileId: number | null | undefined,
+    type: "download" | "thumbnail" = "download"
+  ): string | null {
+    if (!fileId || fileId <= 0) return null;
+    const endpoint =
+      type === "thumbnail"
+        ? `/file/${fileId}/thumbnail`
+        : `/file/${fileId}/download`;
+    return this.getDownloadUrl(endpoint);
+  }
+
+  // Helper method to build avatar URL for users
+  getAvatarUrl(user: {
+    avatarFileId?: number | null;
+    firstName?: string;
+    lastName?: string;
+  }): string | null {
+    if (user.avatarFileId && user.avatarFileId > 0) {
+      return this.getImageUrl(user.avatarFileId, "download");
+    }
+    return null;
+  }
+
+  // Helper method to build featured image URL for products/categories
+  getFeaturedImageUrl(
+    images: Array<{ fileId: number; isFeatured?: boolean; position?: number }>
+  ): string | null {
+    if (!images || images.length === 0) return null;
+
+    // Find featured image or first image
+    const featuredImage =
+      images.find((img) => img.isFeatured) ||
+      images.sort((a, b) => (a.position || 0) - (b.position || 0))[0];
+
+    if (featuredImage && featuredImage.fileId > 0) {
+      return this.getImageUrl(featuredImage.fileId, "download");
+    }
+
+    return null;
   }
 }
 

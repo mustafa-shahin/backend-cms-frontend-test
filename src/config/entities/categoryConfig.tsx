@@ -10,6 +10,7 @@ import {
 } from "../../utils/formFieldHelpers";
 import { format } from "date-fns";
 import ImageSelector from "../../components/ui/ImageSelector";
+import { apiService } from "../../Services/ApiServices";
 import React from "react";
 
 export const categoryEntityConfig: EntityManagerConfig<Category> = {
@@ -19,29 +20,38 @@ export const categoryEntityConfig: EntityManagerConfig<Category> = {
     {
       key: "name",
       label: "Name",
-      render: (name, category) => (
-        <div className="flex items-center">
-          {category.featuredImageUrl && (
-            <div className="flex-shrink-0 h-8 w-8 mr-3">
-              <img
-                src={category.featuredImageUrl}
-                alt={name}
-                className="h-8 w-8 object-cover rounded"
-              />
-            </div>
-          )}
-          <div>
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {name}
-            </div>
-            {category.parentCategoryName && (
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Parent: {category.parentCategoryName}
+      render: (name, category) => {
+        const featuredImageUrl = apiService.getFeaturedImageUrl(
+          category.images || []
+        );
+        return (
+          <div className="flex items-center">
+            {featuredImageUrl && (
+              <div className="flex-shrink-0 h-8 w-8 mr-3">
+                <img
+                  src={featuredImageUrl}
+                  alt={name}
+                  className="h-8 w-8 object-cover rounded"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                  }}
+                />
               </div>
             )}
+            <div>
+              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                {name}
+              </div>
+              {category.parentCategoryName && (
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Parent: {category.parentCategoryName}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: "slug",

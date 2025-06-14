@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../Context/AuthContext";
 import { useTheme } from "../../Context/ThemeContext";
+import { apiService } from "../../Services/ApiServices";
 import Icon from "../common/Icon";
 import Button from "../common/Button";
 
@@ -35,6 +36,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     await logout();
     setIsUserMenuOpen(false);
   };
+
+  const avatarUrl = user ? apiService.getAvatarUrl(user) : null;
 
   return (
     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-16">
@@ -87,12 +90,36 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               className="flex items-center space-x-2 !p-2"
             >
               <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center">
-                {user?.avatarFile ? (
-                  <img
-                    src={user?.avatarUrl}
-                    alt={user?.firstName}
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
+                {avatarUrl ? (
+                  <>
+                    <img
+                      src={avatarUrl}
+                      alt={user?.firstName}
+                      className="h-8 w-8 rounded-full object-cover"
+                      onError={(e) => {
+                        // Fallback to initials if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                        const fallback =
+                          target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = "flex";
+                      }}
+                      onLoad={(e) => {
+                        // Hide fallback if image loads successfully
+                        const target = e.target as HTMLImageElement;
+                        const fallback =
+                          target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = "none";
+                      }}
+                    />
+                    <span
+                      className="text-sm font-medium text-white flex items-center justify-center h-full w-full"
+                      style={{ display: "none" }}
+                    >
+                      {user?.firstName?.[0]}
+                      {user?.lastName?.[0]}
+                    </span>
+                  </>
                 ) : (
                   <span className="text-sm font-medium text-white">
                     {user?.firstName?.[0]}

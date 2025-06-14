@@ -8,6 +8,7 @@ import {
   createTextField,
 } from "../../utils/formFieldHelpers";
 import ImageSelector from "../../components/ui/ImageSelector";
+import { apiService } from "../../Services/ApiServices";
 import React from "react";
 
 export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
@@ -17,27 +18,36 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
     {
       key: "title",
       label: "Title",
-      render: (title, variant) => (
-        <div className="flex items-center">
-          {variant.featuredImageUrl && (
-            <div className="flex-shrink-0 h-8 w-8 mr-3">
-              <img
-                src={variant.featuredImageUrl}
-                alt={title}
-                className="h-8 w-8 object-cover rounded"
-              />
-            </div>
-          )}
-          <div>
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {title || variant.displayTitle}
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              SKU: {variant.sku}
+      render: (title, variant) => {
+        const featuredImageUrl = apiService.getFeaturedImageUrl(
+          variant.images || []
+        );
+        return (
+          <div className="flex items-center">
+            {featuredImageUrl && (
+              <div className="flex-shrink-0 h-8 w-8 mr-3">
+                <img
+                  src={featuredImageUrl}
+                  alt={title}
+                  className="h-8 w-8 object-cover rounded"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                  }}
+                />
+              </div>
+            )}
+            <div>
+              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                {title || variant.displayTitle}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                SKU: {variant.sku}
+              </div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: "price",
