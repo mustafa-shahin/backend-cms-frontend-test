@@ -7,7 +7,12 @@ export * from "./enums";
 export type { BaseEntity, PagedResult } from "./api";
 
 export type { User, CreateUser, UpdateUser } from "./User";
-export type { Address, CreateAddress, UpdateAddress } from "./Address";
+export type {
+  Address,
+  CreateAddress,
+  UpdateAddress,
+  Addresses,
+} from "./Address";
 export type {
   ContactDetails,
   CreateContactDetails,
@@ -16,7 +21,12 @@ export type {
 
 export type { Company, UpdateCompany } from "./Company";
 
-export type { Location, CreateLocation, UpdateLocation } from "./Location";
+export type {
+  Location,
+  CreateLocation,
+  UpdateLocation,
+  Locations,
+} from "./Location";
 
 export type { Page } from "./Page";
 

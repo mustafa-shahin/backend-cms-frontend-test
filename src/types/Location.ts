@@ -49,3 +49,4 @@ export interface CreateLocationOpeningHour {
 }
 
 export interface UpdateLocation extends CreateLocation {}
+export type Locations = Location;

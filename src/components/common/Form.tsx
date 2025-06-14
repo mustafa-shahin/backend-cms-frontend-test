@@ -39,7 +39,6 @@ const Form: React.FC<FormProps> = ({
 
   // Add useEffect to handle defaultValues changes
   useEffect(() => {
-    console.log("Form defaultValues changed:", defaultValues);
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       reset(defaultValues);
     }

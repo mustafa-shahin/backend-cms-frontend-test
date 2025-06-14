@@ -77,7 +77,6 @@ function EntityManager<T extends { id: number | string }>({
     transformDataForApi,
   } = config;
 
-  // Generate plural form automatically
   const entityNamePlural = entityName.endsWith("y")
     ? entityName.slice(0, -1) + "ies"
     : entityName.endsWith("s") ||
@@ -121,7 +120,6 @@ function EntityManager<T extends { id: number | string }>({
               setData(singleResult ? [singleResult] : []);
               setTotalCount(singleResult ? 1 : 0);
             } catch (finalError) {
-              console.error(`Error fetching ${entityNamePlural}:`, finalError);
               setData([]);
               setTotalCount(0);
               toast.error(`Failed to load ${entityNamePlural}`);
@@ -132,7 +130,6 @@ function EntityManager<T extends { id: number | string }>({
         }
       }
     } catch (error) {
-      console.error(`Error fetching ${entityNamePlural}:`, error);
       setData([]);
       setTotalCount(0);
       toast.error(`Failed to load ${entityNamePlural}`);
@@ -235,20 +232,13 @@ function EntityManager<T extends { id: number | string }>({
 
   const getDefaultFormValues = () => {
     if (!editingEntity) {
-      console.log("No editing entity, returning empty object");
       return {};
     }
 
-    console.log("Editing entity:", editingEntity);
-
     if (transformDataForForm) {
-      console.log("Transform function exists, calling it...");
       const transformed = transformDataForForm(editingEntity);
-      console.log("Transformed data:", transformed);
       return transformed;
     }
-
-    console.log("No transform function, returning entity as-is");
     return editingEntity;
   };
 
@@ -399,9 +389,7 @@ function EntityManager<T extends { id: number | string }>({
               size="sm"
               variant="danger"
               leftIcon="trash"
-              onClick={() => {
-                console.log("Bulk delete:", selectedRows);
-              }}
+              onClick={() => {}}
             >
               Delete Selected
             </Button>

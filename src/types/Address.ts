@@ -28,3 +28,4 @@ export interface CreateAddress {
   notes?: string;
 }
 export interface UpdateAddress extends CreateAddress {}
+export type Addresses = Address;

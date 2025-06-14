@@ -1,10 +1,10 @@
 import React from "react";
 import EntityManager from "../../components/entities/EntityManager";
-import { Location } from "../../types/Location";
-import { locationEntityConfig } from "../../config/EntityConfig";
+import { fileEntityConfig } from "../../config/EntityConfig";
+import { FileEntity } from "../../types";
 
 const LocationsPage: React.FC = () => {
-  return <EntityManager<Location> config={locationEntityConfig} />;
+  return <EntityManager<FileEntity> config={fileEntityConfig} />;
 };
 
 export default LocationsPage;
