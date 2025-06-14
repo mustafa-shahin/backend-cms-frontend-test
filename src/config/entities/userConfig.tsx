@@ -1,3 +1,4 @@
+// src/config/entities/userConfig.tsx
 import { EntityManagerConfig } from "../../components/entities/EntityManager";
 import { FormField, User } from "../../types";
 import {
@@ -141,12 +142,22 @@ export const userEntityConfig: EntityManagerConfig<User> = {
     createTextField("timezone", "Timezone", { placeholder: "UTC" }),
     createTextField("language", "Language", { placeholder: "en" }),
 
+    // Password field for creation only
+    {
+      name: "password",
+      label: "Password",
+      type: "password",
+      required: true,
+      validation: { required: "Password is required" },
+      description: "Only required when creating a new user",
+    } as FormField,
+
     ...createAddressFields(),
     ...createContactDetailsFields(),
   ] as FormField[],
   transformDataForForm,
   transformDataForApi,
-  customFormRender: (field, value, onChange, errors) => {
+  customFormRender: (field, value, onChange, errors, formData) => {
     if (field.name === "avatarFileId") {
       return (
         <div key={field.name}>
@@ -172,6 +183,12 @@ export const userEntityConfig: EntityManagerConfig<User> = {
         </div>
       );
     }
+
+    // Hide password field when editing existing users
+    if (field.name === "password" && formData?.id) {
+      return null;
+    }
+
     return null;
   },
 };

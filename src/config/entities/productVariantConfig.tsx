@@ -1,3 +1,4 @@
+// src/config/entities/productVariantConfig.tsx
 import { EntityManagerConfig } from "../../components/entities/EntityManager";
 import { FormField, ProductVariant } from "../../types";
 import {

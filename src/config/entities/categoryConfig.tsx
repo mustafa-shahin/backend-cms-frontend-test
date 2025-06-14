@@ -1,3 +1,4 @@
+// src/config/entities/categoryConfig.tsx
 import { EntityManagerConfig } from "../../components/entities/EntityManager";
 import { Category, FormField } from "../../types";
 import {
@@ -166,6 +167,10 @@ export const categoryEntityConfig: EntityManagerConfig<Category> = {
       }));
       delete data.imageIds;
     }
+
+    // Set default values
+    data.customFields = data.customFields || {};
+
     return data;
   },
   onBeforeUpdate: (data, entity) => {

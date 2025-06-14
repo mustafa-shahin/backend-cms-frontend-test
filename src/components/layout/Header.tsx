@@ -87,10 +87,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               className="flex items-center space-x-2 !p-2"
             >
               <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center">
-                {user?.avatar ? (
+                {user?.avatarFile ? (
                   <img
-                    src={user.avatar}
-                    alt={user.firstName}
+                    src={user?.avatarUrl}
+                    alt={user?.firstName}
                     className="h-8 w-8 rounded-full object-cover"
                   />
                 ) : (

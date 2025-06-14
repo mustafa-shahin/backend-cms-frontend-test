@@ -1,3 +1,4 @@
+// src/types/User.ts
 import { Address, CreateAddress, UpdateAddress } from "./Address";
 import { BaseEntity } from "./api";
 import {
@@ -26,6 +27,8 @@ export interface User extends BaseEntity {
   preferences: Record<string, any>;
   addresses: Address[];
   contactDetails: ContactDetails[];
+  // Computed properties
+  roleName: string;
 }
 
 export interface CreateUser {

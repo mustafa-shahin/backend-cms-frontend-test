@@ -1,3 +1,4 @@
+// src/config/entities/productConfig.tsx
 import { EntityManagerConfig } from "../../components/entities/EntityManager";
 import { Category, FormField, Product } from "../../types";
 import {
@@ -22,10 +23,10 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       label: "Name",
       render: (name, product) => (
         <div className="flex items-center">
-          {product.featuredImage && (
+          {product.featuredImageUrl && (
             <div className="flex-shrink-0 h-10 w-10 mr-3">
               <img
-                src={product.featuredImage}
+                src={product.featuredImageUrl}
                 alt={name}
                 className="h-10 w-10 object-cover rounded"
               />
@@ -318,6 +319,7 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     // Set default values
     data.customFields = data.customFields || {};
     data.seoSettings = data.seoSettings || {};
+    data.categoryIds = data.categoryIds || [];
 
     return data;
   },
@@ -337,6 +339,9 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     // Set hasVariants based on variants array
     data.hasVariants = data.variants && data.variants.length > 0;
 
+    // Set default values
+    data.categoryIds = data.categoryIds || [];
+
     return data;
   },
   transformDataForForm: (product) => {
@@ -344,6 +349,7 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       ...product,
       imageIds: product.images?.map((img) => img.fileId) || [],
       variants: product.variants || [],
+      categoryIds: product.categories?.map((cat) => cat.id) || [],
     };
     return transformed;
   },

@@ -71,7 +71,7 @@ const Form: React.FC<FormProps> = ({
         control={control}
         rules={field.validation}
         render={({ field: { onChange, value, ...fieldProps } }) => {
-          // Check for custom field renderer first
+          // Handle custom renderer first
           if (customFieldRenderer) {
             const customRender = customFieldRenderer(
               field,
@@ -80,11 +80,16 @@ const Form: React.FC<FormProps> = ({
               errors,
               formData
             );
-            if (customRender) {
-              return customRender;
+
+            // Wrap any non-null/non-undefined value in a fragment
+            if (customRender != null) {
+              return React.isValidElement(customRender) ? (
+                customRender
+              ) : (
+                <>{customRender}</>
+              );
             }
           }
-
           // Default field rendering
           switch (field.type) {
             case "textarea":

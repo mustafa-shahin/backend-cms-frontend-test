@@ -1,6 +1,8 @@
+// src/components/ui/ImageSelector.tsx
 import React, { useState, useEffect } from "react";
 import { FileEntity } from "../../types/FileEntity";
 import { FileType } from "../../types/enums";
+import { PagedResult } from "../../types/api";
 import { apiService } from "../../Services/ApiServices";
 import { Button, Icon, Modal } from "../common";
 import toast from "react-hot-toast";
@@ -13,15 +15,6 @@ interface ImageSelectorProps {
   maxImages?: number;
 }
 
-interface SelectedImage {
-  id: number;
-  file: FileEntity;
-  alt?: string;
-  caption?: string;
-  position: number;
-  isFeatured: boolean;
-}
-
 const ImageSelector: React.FC<ImageSelectorProps> = ({
   value,
   onChange,
@@ -31,36 +24,48 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [images, setImages] = useState<FileEntity[]>([]);
-  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
+  const [selectedImages, setSelectedImages] = useState<FileEntity[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     if (value) {
       loadSelectedImages();
+    } else {
+      setSelectedImages([]);
     }
   }, [value]);
 
   const loadSelectedImages = async () => {
     try {
-      const imageIds = Array.isArray(value) ? value : [value];
-      const promises = imageIds.map((id) =>
-        apiService.get<FileEntity>(`/file/${id}`)
-      );
-      const files = await Promise.all(promises);
+      if (!value) {
+        setSelectedImages([]);
+        return;
+      }
 
-      setSelectedImages(
-        files.map((file, index) => ({
-          id: file.id,
-          file,
-          alt: "",
-          caption: "",
-          position: index,
-          isFeatured: index === 0,
-        }))
-      );
+      const imageIds = Array.isArray(value) ? value : [value];
+      const validIds = imageIds.filter((id) => id && id > 0);
+
+      if (validIds.length === 0) {
+        setSelectedImages([]);
+        return;
+      }
+
+      const promises = validIds.map(async (id) => {
+        try {
+          return await apiService.get<FileEntity>(`/file/${id}`);
+        } catch (error) {
+          console.warn(`Failed to load image ${id}:`, error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(promises);
+      const files = results.filter((file): file is FileEntity => file !== null);
+      setSelectedImages(files);
     } catch (error) {
       console.error("Error loading selected images:", error);
+      setSelectedImages([]);
     }
   };
 
@@ -77,11 +82,22 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
         params.append("search", searchTerm);
       }
 
-      const result = await apiService.get<any>(`/file?${params.toString()}`);
-      setImages(result.items || []);
+      try {
+        const result = await apiService.get<PagedResult<FileEntity>>(
+          `/file?${params.toString()}`
+        );
+        setImages(result.items || []);
+      } catch (error) {
+        // Fallback to direct array response
+        const result = await apiService.get<FileEntity[]>(
+          `/file?${params.toString()}`
+        );
+        setImages(Array.isArray(result) ? result : []);
+      }
     } catch (error) {
       console.error("Error fetching images:", error);
       toast.error("Failed to load images");
+      setImages([]);
     } finally {
       setLoading(false);
     }
@@ -138,6 +154,12 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
     return apiService.getDownloadUrl(`/file/${file.id}/thumbnail`);
   };
 
+  const selectedCount = Array.isArray(value)
+    ? value.filter((id) => id > 0).length
+    : value && value > 0
+    ? 1
+    : 0;
+
   return (
     <div className={className}>
       {/* Selected Images Display */}
@@ -153,8 +175,8 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
                 className="relative group bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden"
               >
                 <img
-                  src={getThumbnailUrl(selectedImage.file)}
-                  alt={selectedImage.file.originalFileName}
+                  src={getThumbnailUrl(selectedImage)}
+                  alt={selectedImage.originalFileName}
                   className="w-full h-24 object-cover"
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center">
@@ -170,7 +192,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
                 </div>
                 <div className="p-2">
                   <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                    {selectedImage.file.originalFileName}
+                    {selectedImage.originalFileName}
                   </p>
                 </div>
               </div>
@@ -186,10 +208,10 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
         onClick={() => setIsModalOpen(true)}
         className="w-full"
       >
-        {selectedImages.length > 0
-          ? `${multiple ? "Add More Images" : "Change Image"} (${
-              selectedImages.length
-            }${multiple ? `/${maxImages}` : ""})`
+        {selectedCount > 0
+          ? `${
+              multiple ? "Add More Images" : "Change Image"
+            } (${selectedCount}${multiple ? `/${maxImages}` : ""})`
           : "Select Image(s)"}
       </Button>
 
@@ -241,6 +263,10 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
                     src={getThumbnailUrl(image)}
                     alt={image.originalFileName}
                     className="w-full h-24 object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236b7280">Failed to load</text></svg>`;
+                    }}
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity flex items-center justify-center">
                     {isSelected(image.id) && (
@@ -286,7 +312,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
             </Button>
             {multiple && (
               <Button onClick={() => setIsModalOpen(false)} leftIcon="check">
-                Done ({Array.isArray(value) ? value.length : 0} selected)
+                Done ({selectedCount} selected)
               </Button>
             )}
           </div>
