@@ -1,5 +1,5 @@
 // src/components/ui/ProductVariantManager.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import clsx from "clsx";
 import { Button, Icon, Modal } from "../common";
@@ -24,7 +24,7 @@ interface ProductVariantImage {
 
 interface ProductVariant {
   id: number;
-  productId: number;
+  productId: number | null;
   title: string;
   sku: string;
   price: number;
@@ -74,8 +74,9 @@ interface CreateProductVariant {
   option1?: string;
   option2?: string;
   option3?: string;
-  imageIds: number[];
+  imageIds?: number[];
   images?: any[];
+  productId?: number | null; // Make optional for standalone variants
 }
 
 // API payload type with optional imageIds for delete operation
@@ -109,24 +110,34 @@ interface ApiVariantPayload {
   }>;
 }
 
-interface ProductVariantManagerProps {
+// Export the ProductVariantManagerProps interface for external use
+export interface ProductVariantManagerProps {
   variants: ProductVariant[];
   onVariantsChange: (variants: ProductVariant[]) => void;
-  productId?: number;
+  productId?: number | null;
   isReadonly?: boolean;
+  showStandaloneSelector?: boolean;
+  onVariantClick?: (variant: ProductVariant) => void;
 }
 
 const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
   variants,
   onVariantsChange,
-  productId,
+  productId = null,
   isReadonly = false,
+  showStandaloneSelector = false,
+  onVariantClick,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(
     null
   );
   const [loading, setLoading] = useState(false);
+  const [showStandaloneModal, setShowStandaloneModal] = useState(false);
+  const [standaloneVariants, setStandaloneVariants] = useState<
+    ProductVariant[]
+  >([]);
+  const [loadingStandalone, setLoadingStandalone] = useState(false);
 
   const {
     control,
@@ -155,8 +166,26 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
       option2: "",
       option3: "",
       imageIds: [],
+      productId: productId,
     },
   });
+
+  // Load standalone variants when needed
+  const loadStandaloneVariants = async () => {
+    try {
+      setLoadingStandalone(true);
+      const result = await apiService.get<any>("/productvariant/standalone");
+      setStandaloneVariants(
+        Array.isArray(result) ? result : result.items || []
+      );
+    } catch (error) {
+      console.error("Error loading standalone variants:", error);
+      toast.error("Failed to load standalone variants");
+      setStandaloneVariants([]);
+    } finally {
+      setLoadingStandalone(false);
+    }
+  };
 
   const handleCreateVariant = () => {
     setEditingVariant(null);
@@ -181,8 +210,54 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
       option2: "",
       option3: "",
       imageIds: [],
+      productId: productId,
     });
     setIsModalOpen(true);
+  };
+
+  const handleAddStandaloneVariant = () => {
+    loadStandaloneVariants();
+    setShowStandaloneModal(true);
+  };
+
+  const handleSelectStandaloneVariant = async (variant: ProductVariant) => {
+    try {
+      setLoading(true);
+
+      // Assign the standalone variant to this product
+      if (productId && productId > 0) {
+        // If we have a product ID, assign the variant to the product via API
+        const updatedVariant = await apiService.post<ProductVariant>(
+          `/productvariant/${variant.id}/assign-to-product/${productId}`,
+          {}
+        );
+
+        // Update local state
+        const updatedVariants = [...variants, updatedVariant];
+        onVariantsChange(updatedVariants);
+
+        toast.success("Variant added to product successfully");
+      } else {
+        // For new products, just add to local state with productId set
+        const variantCopy = {
+          ...variant,
+          productId: productId,
+          id: Date.now(), // Temporary ID for new products
+        };
+
+        const updatedVariants = [...variants, variantCopy];
+        onVariantsChange(updatedVariants);
+
+        toast.success("Variant added to product");
+      }
+
+      setShowStandaloneModal(false);
+    } catch (error: any) {
+      console.error("Error adding standalone variant:", error);
+      toast.error(error.response?.data?.message || "Failed to add variant");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEditVariant = (variant: ProductVariant) => {
@@ -209,6 +284,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
       option3: variant.option3 || "",
       imageIds:
         variant.imageIds || variant.images?.map((img) => img.fileId) || [],
+      productId: variant.productId,
     });
     setIsModalOpen(true);
   };
@@ -286,7 +362,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
 
       // For existing variants with positive IDs, update via API
       if (editingVariant && editingVariant.id > 0) {
-        const apiPayload: ApiVariantPayload = {
+        const apiPayload: Omit<ApiVariantPayload, "imageIds"> = {
           ...variantData,
           images: variantData.imageIds.map((fileId, index) => ({
             fileId,
@@ -296,7 +372,6 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
             caption: "",
           })),
         };
-        delete apiPayload.imageIds;
 
         updatedVariant = await apiService.put<ProductVariant>(
           `/productvariant/${editingVariant.id}`,
@@ -316,7 +391,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
             caption: "",
           })),
         };
-        delete apiPayload.imageIds;
+        delete (apiPayload as any).imageIds;
 
         updatedVariant = await apiService.post<ProductVariant>(
           `/product/${productId}/variant`,
@@ -324,12 +399,12 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
         );
         toast.success("Variant created successfully");
       }
-      // For new products without productId, create using standalone variant API
+      // For standalone variants (no productId)
       else {
         // Generate a temporary SKU if none provided
         const tempSku = variantData.sku || `TEMP-${Date.now()}`;
 
-        const apiPayload: ApiVariantPayload = {
+        const apiPayload = {
           ...variantData,
           sku: tempSku,
           images: variantData.imageIds.map((fileId, index) => ({
@@ -339,17 +414,25 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
             alt: "",
             caption: "",
           })),
+          productId: productId || null, // Allow null for standalone variants
         };
-        delete apiPayload.imageIds;
+        const { imageIds, ...cleanApiPayload } = apiPayload;
 
-        // Use standalone variant creation endpoint
-        updatedVariant = await apiService.post<ProductVariant>(
-          "/productvariant",
-          {
-            ...apiPayload,
-            productId: productId || null, // Allow null productId for standalone creation
-          }
-        );
+        // For truly standalone variants or new products without ID yet
+        if (!productId) {
+          // Use standalone variant creation endpoint
+          updatedVariant = await apiService.post<ProductVariant>(
+            "/productvariant",
+            cleanApiPayload
+          );
+        } else {
+          // Create variant for existing product
+          updatedVariant = await apiService.post<ProductVariant>(
+            `/product/${productId}/variant`,
+            cleanApiPayload
+          );
+        }
+
         toast.success("Variant created successfully");
       }
 
@@ -418,16 +501,25 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
       apiService.getFeaturedImageUrl(variant.images || []) ||
       (variant.imageIds && variant.imageIds.length > 0
         ? apiService.getImageUrl(variant.imageIds[0], "download")
-        : undefined); // Changed from null to undefined to fix TypeScript error
+        : undefined);
 
     return (
       <div
         key={variant.id}
-        className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-colors ${
+        className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-colors cursor-pointer hover:shadow-lg ${
           variant.isDefault
             ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
             : "border-gray-200 dark:border-gray-700"
         }`}
+        onClick={() => {
+          if (!isReadonly) {
+            if (onVariantClick) {
+              onVariantClick(variant);
+            } else {
+              handleEditVariant(variant);
+            }
+          }
+        }}
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
@@ -448,6 +540,11 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                   Default
                 </span>
               )}
+              {!variant.productId && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                  Standalone
+                </span>
+              )}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               SKU: {variant.sku}
@@ -455,12 +552,21 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
           </div>
 
           {!isReadonly && (
-            <div className="flex items-center space-x-1">
+            <div
+              className="flex items-center space-x-1"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Button
                 size="xs"
                 variant="ghost"
                 leftIcon="edit"
-                onClick={() => handleEditVariant(variant)}
+                onClick={() => {
+                  if (onVariantClick) {
+                    onVariantClick(variant);
+                  } else {
+                    handleEditVariant(variant);
+                  }
+                }}
               >
                 Edit
               </Button>
@@ -542,7 +648,10 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
 
         {/* Actions */}
         {!isReadonly && !variant.isDefault && (
-          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <div
+            className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Button
               size="xs"
               variant="outline"
@@ -699,9 +808,21 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
         </div>
 
         {!isReadonly && (
-          <Button leftIcon="plus" onClick={handleCreateVariant} size="sm">
-            Add Variant
-          </Button>
+          <div className="flex space-x-2">
+            {showStandaloneSelector && (
+              <Button
+                leftIcon="plus"
+                onClick={handleAddStandaloneVariant}
+                size="sm"
+                variant="outline"
+              >
+                Add Existing Variant
+              </Button>
+            )}
+            <Button leftIcon="plus" onClick={handleCreateVariant} size="sm">
+              Create New Variant
+            </Button>
+          </div>
         )}
       </div>
 
@@ -724,12 +845,102 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
             Create variants to offer different options for this product.
           </p>
           {!isReadonly && (
-            <Button leftIcon="plus" onClick={handleCreateVariant}>
-              Create Your First Variant
-            </Button>
+            <div className="flex justify-center space-x-2">
+              {showStandaloneSelector && (
+                <Button
+                  leftIcon="plus"
+                  onClick={handleAddStandaloneVariant}
+                  variant="outline"
+                >
+                  Add Existing Variant
+                </Button>
+              )}
+              <Button leftIcon="plus" onClick={handleCreateVariant}>
+                Create New Variant
+              </Button>
+            </div>
           )}
         </div>
       )}
+
+      {/* Standalone Variants Modal */}
+      <Modal
+        isOpen={showStandaloneModal}
+        onClose={() => setShowStandaloneModal(false)}
+        title="Select Standalone Variant"
+        size="xl"
+      >
+        <div className="space-y-4">
+          {loadingStandalone ? (
+            <div className="flex justify-center items-center py-12">
+              <Icon
+                name="spinner"
+                size="lg"
+                spin
+                className="text-primary-600"
+              />
+            </div>
+          ) : standaloneVariants.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+              {standaloneVariants.map((variant) => (
+                <div
+                  key={variant.id}
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-lg hover:border-primary-500 transition-all"
+                  onClick={() => handleSelectStandaloneVariant(variant)}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                        {variant.title}
+                      </h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        SKU: {variant.sku}
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                      Standalone
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                        Price:
+                      </span>
+                      <span className="ml-1 text-gray-900 dark:text-white">
+                        ${variant.price.toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                        Stock:
+                      </span>
+                      <span className="ml-1 text-gray-900 dark:text-white">
+                        {variant.quantity}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Icon
+                name="briefcase"
+                size="2xl"
+                className="mx-auto text-gray-400 mb-4"
+              />
+              <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                No Standalone Variants
+              </h4>
+              <p className="text-gray-600 dark:text-gray-400">
+                No standalone variants available. Create variants from the
+                variant management page first.
+              </p>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* Create/Edit Variant Modal */}
       <Modal

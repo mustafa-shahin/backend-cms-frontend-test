@@ -62,6 +62,7 @@ import {
   faBell,
   faTh,
   faList,
+  faTag,
 } from "@fortawesome/free-solid-svg-icons";
 
 export type IconName =
@@ -124,7 +125,8 @@ export type IconName =
   | "toggle-off"
   | "bell"
   | "th"
-  | "list";
+  | "list"
+  | "tag";
 
 const iconMap: Record<IconName, IconDefinition> = {
   home: faHome,
@@ -187,6 +189,7 @@ const iconMap: Record<IconName, IconDefinition> = {
   bell: faBell,
   th: faTh,
   list: faList,
+  tag: faTag,
 };
 
 interface IconProps {

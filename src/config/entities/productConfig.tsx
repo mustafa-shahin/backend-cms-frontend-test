@@ -1,5 +1,5 @@
 // src/config/entities/productConfig.tsx
-import React from "react";
+import React, { useState } from "react";
 import { EntityManagerConfig } from "../../components/entities/EntityManager";
 import { FormField, Product, Category } from "../../types";
 import {
@@ -12,8 +12,15 @@ import {
 import { ProductStatus, ProductType } from "../../types/enums";
 import { format } from "date-fns";
 import ImageSelector from "../../components/ui/ImageSelector";
-import ProductVariantManager from "../../components/ui/ProductVariantManager";
+import ProductVariantManager, {
+  ProductVariantManagerProps,
+} from "../../components/ui/ProductVariantManager";
+import CategorySelector from "../../components/ui/CategorySelector";
 import { apiService } from "../../Services/ApiServices";
+import { Button, Icon, Modal, Form } from "../../components/common";
+import { categoryEntityConfig } from "./categoryConfig";
+import { productVariantEntityConfig } from "./productVariantConfig";
+import toast from "react-hot-toast";
 
 export const productEntityConfig: EntityManagerConfig<Product> = {
   entityName: "Product",
@@ -168,6 +175,14 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       description: "Select images for this product",
     } as FormField,
 
+    // Categories
+    {
+      name: "categoryIds",
+      label: "Product Categories",
+      type: "text", // We'll override this with custom render
+      description: "Select categories for this product",
+    } as FormField,
+
     // Pricing
     createNumberField("price", "Price", {
       required: true,
@@ -291,21 +306,29 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       );
     }
 
+    if (field.name === "categoryIds") {
+      return (
+        <CategorySelectorWithManagement
+          key={field.name}
+          field={field}
+          value={value}
+          onChange={onChange}
+          errors={errors}
+          formData={formData}
+        />
+      );
+    }
+
     if (field.name === "variants") {
       return (
-        <div key={field.name}>
-          <ProductVariantManager
-            variants={value || []}
-            onVariantsChange={onChange}
-            productId={formData?.id}
-            isReadonly={false}
-          />
-          {errors[field.name] && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-              {(errors[field.name] as any)?.message || "This field is required"}
-            </p>
-          )}
-        </div>
+        <VariantManagerWithEdit
+          key={field.name}
+          field={field}
+          value={value}
+          onChange={onChange}
+          errors={errors}
+          formData={formData}
+        />
       );
     }
 
@@ -342,6 +365,14 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       delete data.imageIds;
     } else {
       data.images = [];
+    }
+
+    // Handle categoryIds
+    if (data.categoryIds && Array.isArray(data.categoryIds)) {
+      // Keep categoryIds as is for the API
+      data.categoryIds = data.categoryIds.filter((id: number) => id > 0);
+    } else {
+      data.categoryIds = [];
     }
 
     // Transform variants from ProductVariantManager format to API format
@@ -408,7 +439,6 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     // Set default values for objects
     data.customFields = data.customFields || {};
     data.seoSettings = data.seoSettings || {};
-    data.categoryIds = data.categoryIds || [];
 
     // Ensure string fields are not null
     data.name = data.name || "";
@@ -482,4 +512,204 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     console.log("[ProductConfig] transformDataForForm returning:", transformed);
     return transformed;
   },
+};
+
+// Helper component for Category Management
+const CategorySelectorWithManagement: React.FC<{
+  field: FormField;
+  value: any;
+  onChange: (value: any) => void;
+  errors: any;
+  formData?: any;
+}> = ({ field, value, onChange, errors, formData }) => {
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+
+  const handleCategoryEdit = (category: Category) => {
+    setEditingCategory(category);
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleCategoryUpdate = async (categoryData: any) => {
+    if (!editingCategory) return;
+
+    try {
+      const cleanedData = categoryEntityConfig.onBeforeUpdate!(
+        categoryData,
+        editingCategory
+      );
+      await apiService.put(`/category/${editingCategory.id}`, cleanedData);
+      toast.success("Category updated successfully");
+      setIsCategoryModalOpen(false);
+      setEditingCategory(null);
+    } catch (error: any) {
+      console.error("Error updating category:", error);
+      toast.error(error.response?.data?.message || "Failed to update category");
+    }
+  };
+
+  const categoryFormData = editingCategory
+    ? categoryEntityConfig.transformDataForForm!(editingCategory)
+    : {};
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {field.label}
+        {field.required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+
+      <CategorySelector
+        value={value || []}
+        onChange={onChange}
+        multiple={true}
+        maxCategories={10}
+        onCategoryEdit={handleCategoryEdit}
+      />
+
+      {field.description && (
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {field.description}
+        </p>
+      )}
+
+      {errors[field.name] && (
+        <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+          {(errors[field.name] as any)?.message || "This field is required"}
+        </p>
+      )}
+
+      {/* Category Edit Modal */}
+      <Modal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        title="Edit Category"
+        size="xl"
+      >
+        {editingCategory && (
+          <Form
+            fields={categoryEntityConfig.formFields}
+            onSubmit={handleCategoryUpdate}
+            defaultValues={categoryFormData}
+            submitLabel="Update Category"
+            onCancel={() => setIsCategoryModalOpen(false)}
+            customFieldRenderer={categoryEntityConfig.customFormRender}
+          />
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+// Helper component for Variant Management
+const VariantManagerWithEdit: React.FC<{
+  field: FormField;
+  value: any;
+  onChange: (value: any) => void;
+  errors: any;
+  formData?: any;
+}> = ({ field, value, onChange, errors, formData }) => {
+  const [editingVariant, setEditingVariant] = useState<any>(null);
+  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
+
+  // Debug logging for variant changes
+  React.useEffect(() => {
+    console.log("[VariantManagerWithEdit] Variants value changed:", value);
+    console.log("[VariantManagerWithEdit] FormData:", formData);
+  }, [value, formData]);
+
+  const handleVariantEdit = (variant: any) => {
+    console.log("[VariantManagerWithEdit] Editing variant:", variant);
+    setEditingVariant(variant);
+    setIsVariantModalOpen(true);
+  };
+
+  const handleVariantsChange = (newVariants: any[]) => {
+    console.log("[VariantManagerWithEdit] Variants changed from:", value);
+    console.log("[VariantManagerWithEdit] Variants changed to:", newVariants);
+    onChange(newVariants);
+  };
+
+  const handleVariantUpdate = async (variantData: any) => {
+    if (!editingVariant) return;
+
+    try {
+      if (editingVariant.id > 0) {
+        // Update via API if it's an existing variant
+        const cleanedData = productVariantEntityConfig.onBeforeUpdate!(
+          variantData,
+          editingVariant
+        );
+        await apiService.put(
+          `/productvariant/${editingVariant.id}`,
+          cleanedData
+        );
+        toast.success("Variant updated successfully");
+
+        // Update the variants in the parent form
+        const updatedVariants = (value || []).map((v: any) =>
+          v.id === editingVariant.id ? { ...v, ...variantData } : v
+        );
+        onChange(updatedVariants);
+      } else {
+        // Update locally for new variants
+        const updatedVariants = (value || []).map((v: any) =>
+          v.id === editingVariant.id ? { ...v, ...variantData } : v
+        );
+        onChange(updatedVariants);
+        toast.success("Variant updated");
+      }
+
+      setIsVariantModalOpen(false);
+      setEditingVariant(null);
+    } catch (error: any) {
+      console.error("Error updating variant:", error);
+      toast.error(error.response?.data?.message || "Failed to update variant");
+    }
+  };
+
+  const variantFormData = editingVariant
+    ? productVariantEntityConfig.transformDataForForm!(editingVariant)
+    : {};
+
+  // Enhanced variant manager with click-to-edit functionality
+  return (
+    <div>
+      <ProductVariantManager
+        variants={value || []}
+        onVariantsChange={handleVariantsChange}
+        productId={formData?.id}
+        isReadonly={false}
+        showStandaloneSelector={true}
+        onVariantClick={handleVariantEdit}
+      />
+
+      {errors[field.name] && (
+        <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+          {(errors[field.name] as any)?.message || "This field is required"}
+        </p>
+      )}
+
+      {/* Variant Edit Modal */}
+      <Modal
+        isOpen={isVariantModalOpen}
+        onClose={() => setIsVariantModalOpen(false)}
+        title="Edit Variant"
+        size="xl"
+      >
+        {editingVariant && (
+          <Form
+            fields={productVariantEntityConfig.formFields.filter(
+              (f) => f.name !== "productId"
+            )} // Remove productId field
+            onSubmit={handleVariantUpdate}
+            defaultValues={variantFormData}
+            submitLabel="Update Variant"
+            onCancel={() => setIsVariantModalOpen(false)}
+            customFieldRenderer={productVariantEntityConfig.customFormRender}
+          />
+        )}
+      </Modal>
+    </div>
+  );
 };
