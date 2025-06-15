@@ -224,47 +224,68 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({
       {selectedCategories.length > 0 && (
         <div className="mb-4">
           <div className="flex flex-wrap gap-2">
-            {selectedCategories.map((selectedCategory, index) => (
-              <div
-                key={selectedCategory.id}
-                className="inline-flex items-center bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-sm rounded-full px-3 py-1 border border-blue-200 dark:border-blue-700"
-              >
-                {/* Category name with click handler for editing */}
-                <span
-                  className={`${
-                    onCategoryEdit ? "cursor-pointer hover:underline" : ""
-                  }`}
-                  onClick={() =>
-                    onCategoryEdit && onCategoryEdit(selectedCategory)
-                  }
+            {selectedCategories.map((selectedCategory, index) => {
+              const featuredImageUrl = apiService.getFeaturedImageUrl(
+                selectedCategory.images || []
+              );
+
+              return (
+                <div
+                  key={selectedCategory.id}
+                  className="inline-flex items-center bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-sm rounded-full px-3 py-1 border border-blue-200 dark:border-blue-700"
                 >
-                  {selectedCategory.name}
-                </span>
+                  {/* Category Image */}
+                  {featuredImageUrl && (
+                    <div className="flex-shrink-0 h-4 w-4 mr-2">
+                      <img
+                        src={featuredImageUrl}
+                        alt={selectedCategory.name}
+                        className="h-4 w-4 object-cover rounded-full"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  )}
 
-                {selectedCategory.parentCategoryName && (
-                  <span className="ml-1 text-xs opacity-75">
-                    ({selectedCategory.parentCategoryName})
+                  {/* Category name with click handler for editing */}
+                  <span
+                    className={`${
+                      onCategoryEdit ? "cursor-pointer hover:underline" : ""
+                    }`}
+                    onClick={() =>
+                      onCategoryEdit && onCategoryEdit(selectedCategory)
+                    }
+                  >
+                    {selectedCategory.name}
                   </span>
-                )}
 
-                {/* Selected indicator for multiple selection */}
-                {multiple && (
-                  <span className="ml-2 bg-blue-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs">
-                    {index + 1}
-                  </span>
-                )}
+                  {selectedCategory.parentCategoryName && (
+                    <span className="ml-1 text-xs opacity-75">
+                      ({selectedCategory.parentCategoryName})
+                    </span>
+                  )}
 
-                {/* Remove button */}
-                <button
-                  type="button"
-                  onClick={(e) => removeCategory(selectedCategory.id, e)}
-                  className="ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-100"
-                  aria-label="Remove category"
-                >
-                  <Icon name="times" size="xs" />
-                </button>
-              </div>
-            ))}
+                  {/* Selected indicator for multiple selection */}
+                  {multiple && (
+                    <span className="ml-2 bg-blue-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs">
+                      {index + 1}
+                    </span>
+                  )}
+
+                  {/* Remove button */}
+                  <button
+                    type="button"
+                    onClick={(e) => removeCategory(selectedCategory.id, e)}
+                    className="ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-100"
+                    aria-label="Remove category"
+                  >
+                    <Icon name="times" size="xs" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

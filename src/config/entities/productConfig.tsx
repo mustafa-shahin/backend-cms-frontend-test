@@ -183,6 +183,14 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       description: "Select categories for this product",
     } as FormField,
 
+    // Categories Display
+    {
+      name: "categoriesDisplay",
+      label: "Selected Categories",
+      type: "text", // We'll override this with custom render
+      description: "Currently selected categories",
+    } as FormField,
+
     // Pricing
     createNumberField("price", "Price", {
       required: true,
@@ -264,6 +272,14 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       description: "Manage different variations of this product",
     } as FormField,
 
+    // Variants Display
+    {
+      name: "variantsDisplay",
+      label: "Current Variants",
+      type: "text", // We'll override this with custom render
+      description: "Currently configured variants",
+    } as FormField,
+
     // SEO
     createTextField("metaTitle", "Meta Title", {
       description: "SEO title for search engines",
@@ -319,6 +335,17 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       );
     }
 
+    if (field.name === "categoriesDisplay") {
+      return (
+        <CategoriesDisplaySection
+          key={field.name}
+          field={field}
+          categories={formData?.categories || []}
+          categoryIds={formData?.categoryIds || []}
+        />
+      );
+    }
+
     if (field.name === "variants") {
       return (
         <VariantManagerWithEdit
@@ -327,6 +354,17 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
           value={value}
           onChange={onChange}
           errors={errors}
+          formData={formData}
+        />
+      );
+    }
+
+    if (field.name === "variantsDisplay") {
+      return (
+        <VariantsDisplaySection
+          key={field.name}
+          field={field}
+          variants={value || []}
           formData={formData}
         />
       );
@@ -601,6 +639,111 @@ const CategorySelectorWithManagement: React.FC<{
   );
 };
 
+// Helper component for displaying selected categories
+const CategoriesDisplaySection: React.FC<{
+  field: FormField;
+  categories: Category[];
+  categoryIds: number[];
+}> = ({ field, categories, categoryIds }) => {
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+
+  const handleCategoryEdit = (category: Category) => {
+    setEditingCategory(category);
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleCategoryUpdate = async (categoryData: any) => {
+    if (!editingCategory) return;
+
+    try {
+      const cleanedData = categoryEntityConfig.onBeforeUpdate!(
+        categoryData,
+        editingCategory
+      );
+      await apiService.put(`/category/${editingCategory.id}`, cleanedData);
+      toast.success("Category updated successfully");
+      setIsCategoryModalOpen(false);
+      setEditingCategory(null);
+    } catch (error: any) {
+      console.error("Error updating category:", error);
+      toast.error(error.response?.data?.message || "Failed to update category");
+    }
+  };
+
+  const categoryFormData = editingCategory
+    ? categoryEntityConfig.transformDataForForm!(editingCategory)
+    : {};
+
+  // Only render if there are categories to display
+  if (!categories || categories.length === 0) {
+    return null;
+  }
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {field.label}
+      </label>
+
+      <div className="space-y-2">
+        {categories.map((category) => (
+          <div
+            key={category.id}
+            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+            onClick={() => handleCategoryEdit(category)}
+          >
+            <div className="flex items-center space-x-3">
+              <Icon name="tag" size="sm" className="text-blue-500" />
+              <div>
+                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                  {category.name}
+                </div>
+                {category.parentCategoryName && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    Parent: {category.parentCategoryName}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {category.productCount} products
+              </span>
+              <Icon name="chevron-right" size="xs" className="text-gray-400" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {field.description && (
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {field.description}
+        </p>
+      )}
+
+      {/* Category Edit Modal */}
+      <Modal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        title="Edit Category"
+        size="xl"
+      >
+        {editingCategory && (
+          <Form
+            fields={categoryEntityConfig.formFields}
+            onSubmit={handleCategoryUpdate}
+            defaultValues={categoryFormData}
+            submitLabel="Update Category"
+            onCancel={() => setIsCategoryModalOpen(false)}
+            customFieldRenderer={categoryEntityConfig.customFormRender}
+          />
+        )}
+      </Modal>
+    </div>
+  );
+};
+
 // Helper component for Variant Management
 const VariantManagerWithEdit: React.FC<{
   field: FormField;
@@ -687,6 +830,125 @@ const VariantManagerWithEdit: React.FC<{
       {errors[field.name] && (
         <p className="mt-1 text-sm text-red-600 dark:text-red-400">
           {(errors[field.name] as any)?.message || "This field is required"}
+        </p>
+      )}
+
+      {/* Variant Edit Modal */}
+      <Modal
+        isOpen={isVariantModalOpen}
+        onClose={() => setIsVariantModalOpen(false)}
+        title="Edit Variant"
+        size="xl"
+      >
+        {editingVariant && (
+          <Form
+            fields={productVariantEntityConfig.formFields.filter(
+              (f) => f.name !== "productId"
+            )} // Remove productId field
+            onSubmit={handleVariantUpdate}
+            defaultValues={variantFormData}
+            submitLabel="Update Variant"
+            onCancel={() => setIsVariantModalOpen(false)}
+            customFieldRenderer={productVariantEntityConfig.customFormRender}
+          />
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+// Helper component for displaying current variants
+const VariantsDisplaySection: React.FC<{
+  field: FormField;
+  variants: any[];
+  formData?: any;
+}> = ({ field, variants, formData }) => {
+  const [editingVariant, setEditingVariant] = useState<any>(null);
+  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
+
+  const handleVariantEdit = (variant: any) => {
+    setEditingVariant(variant);
+    setIsVariantModalOpen(true);
+  };
+
+  const handleVariantUpdate = async (variantData: any) => {
+    if (!editingVariant) return;
+
+    try {
+      if (editingVariant.id > 0) {
+        // Update via API if it's an existing variant
+        const cleanedData = productVariantEntityConfig.onBeforeUpdate!(
+          variantData,
+          editingVariant
+        );
+        await apiService.put(
+          `/productvariant/${editingVariant.id}`,
+          cleanedData
+        );
+        toast.success("Variant updated successfully");
+      } else {
+        toast.success("Variant updated");
+      }
+
+      setIsVariantModalOpen(false);
+      setEditingVariant(null);
+    } catch (error: any) {
+      console.error("Error updating variant:", error);
+      toast.error(error.response?.data?.message || "Failed to update variant");
+    }
+  };
+
+  const variantFormData = editingVariant
+    ? productVariantEntityConfig.transformDataForForm!(editingVariant)
+    : {};
+
+  // Only render if there are variants to display
+  if (!variants || variants.length === 0) {
+    return null;
+  }
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {field.label}
+      </label>
+
+      <div className="space-y-2">
+        {variants.map((variant, index) => (
+          <div
+            key={variant.id || index}
+            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+            onClick={() => handleVariantEdit(variant)}
+          >
+            <div className="flex items-center space-x-3">
+              <Icon name="briefcase" size="sm" className="text-green-500" />
+              <div>
+                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                  {variant.title ||
+                    variant.displayTitle ||
+                    `Variant ${index + 1}`}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  SKU: {variant.sku} • Price: ${variant.price.toFixed(2)} •
+                  Stock: {variant.quantity}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {variant.isDefault && (
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                  Default
+                </span>
+              )}
+              <Icon name="chevron-right" size="xs" className="text-gray-400" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {field.description && (
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {field.description}
         </p>
       )}
 

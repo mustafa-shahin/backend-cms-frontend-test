@@ -44,6 +44,11 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 SKU: {variant.sku}
               </div>
+              {!variant.productId && (
+                <div className="text-xs text-yellow-600 dark:text-yellow-400">
+                  Standalone
+                </div>
+              )}
             </div>
           </div>
         );
@@ -125,11 +130,11 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
       description: "Unique identifier for this variant",
     }),
 
-    // Product ID field for standalone variant creation
+    // Product ID field - conditional requirement
     createNumberField("productId", "Product ID", {
-      required: true,
-      validation: { required: "Product ID is required" },
-      description: "ID of the product this variant belongs to",
+      required: false, // Made optional for standalone variants
+      description:
+        "ID of the product this variant belongs to (leave empty for standalone variants)",
     }),
 
     // Variant Images
@@ -202,7 +207,7 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
       placeholder: "e.g., Material",
     }),
   ] as FormField[],
-  customFormRender: (field, value, onChange, errors) => {
+  customFormRender: (field, value, onChange, errors, formData) => {
     if (field.name === "imageIds") {
       return (
         <div key={field.name}>
@@ -229,6 +234,12 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
         </div>
       );
     }
+
+    // Hide productId field when editing within ProductVariantManager (it's handled internally)
+    if (field.name === "productId" && formData && formData._hideProductId) {
+      return <div key={field.name} style={{ display: "none" }}></div>;
+    }
+
     return null;
   },
   onBeforeCreate: (data) => {
@@ -253,7 +264,13 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
     data.weightUnit = data.weightUnit || "kg";
 
     // Handle numeric fields
-    data.productId = parseInt(String(data.productId)) || undefined;
+    // Only set productId if it's provided and valid
+    if (data.productId && parseInt(String(data.productId)) > 0) {
+      data.productId = parseInt(String(data.productId));
+    } else {
+      data.productId = null; // Explicitly set to null for standalone variants
+    }
+
     data.price = cleanNumericField(data.price) || 0;
     data.compareAtPrice = cleanNumericField(data.compareAtPrice);
     data.costPerItem = cleanNumericField(data.costPerItem);
@@ -298,8 +315,8 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
       entity
     );
 
-    // Preserve the productId from the entity
-    if (entity && entity.productId) {
+    // Preserve the productId from the entity if not provided in data
+    if (entity && entity.productId && !data.productId) {
       data.productId = entity.productId;
     }
 

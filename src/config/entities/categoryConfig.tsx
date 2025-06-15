@@ -136,7 +136,7 @@ export const categoryEntityConfig: EntityManagerConfig<Category> = {
       description: "Comma-separated keywords for SEO",
     }),
   ] as FormField[],
-  customFormRender: (field, value, onChange, errors) => {
+  customFormRender: (field, value, onChange, errors, formData) => {
     if (field.name === "imageIds") {
       return (
         <div key={field.name}>
