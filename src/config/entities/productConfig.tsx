@@ -89,9 +89,9 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     {
       key: "type",
       label: "Type",
-      render: (type) => (
+      render: (type, product) => (
         <span className="text-sm text-gray-900 dark:text-white">
-          {ProductType[type]}
+          {product.typeName || ProductType[type] || "Unknown"}
         </span>
       ),
     },
@@ -298,6 +298,7 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
             variants={value || []}
             onVariantsChange={onChange}
             productId={formData?.id}
+            isReadonly={false}
           />
           {errors[field.name] && (
             <p className="mt-1 text-sm text-red-600 dark:text-red-400">
@@ -314,12 +315,12 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     console.log("[ProductConfig] onBeforeCreate called with data:", data);
 
     // Clean and validate numeric fields
-    const cleanNumericField = (value: any): number | null => {
+    const cleanNumericField = (value: any): number | undefined => {
       if (value === "" || value === null || value === undefined) {
-        return null;
+        return undefined;
       }
       const parsed = parseFloat(value);
-      return isNaN(parsed) ? null : parsed;
+      return isNaN(parsed) ? undefined : parsed;
     };
 
     // Clean up price fields
@@ -327,7 +328,7 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     data.compareAtPrice = cleanNumericField(data.compareAtPrice);
     data.costPerItem = cleanNumericField(data.costPerItem);
     data.weight = cleanNumericField(data.weight) || 0;
-    data.quantity = parseInt(data.quantity) || 0;
+    data.quantity = parseInt(String(data.quantity)) || 0;
 
     // Transform imageIds to images array
     if (data.imageIds && Array.isArray(data.imageIds)) {
@@ -344,54 +345,65 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
     }
 
     // Transform variants from ProductVariantManager format to API format
-    if (data.variants && Array.isArray(data.variants)) {
-      data.variants = data.variants.map((variant: any) => ({
-        title: variant.title || "",
-        sku: variant.sku || "",
-        price: cleanNumericField(variant.price) || 0,
+    if (
+      data.variants &&
+      Array.isArray(data.variants) &&
+      data.variants.length > 0
+    ) {
+      data.variants = data.variants.map((variant: any, index: number) => ({
+        title: variant.title || `Variant ${index + 1}`,
+        sku: variant.sku || `${data.sku}-${index + 1}`,
+        price: cleanNumericField(variant.price) || data.price || 0,
         compareAtPrice: cleanNumericField(variant.compareAtPrice),
         costPerItem: cleanNumericField(variant.costPerItem),
-        quantity: parseInt(variant.quantity) || 0,
-        trackQuantity: Boolean(variant.trackQuantity),
+        quantity: parseInt(String(variant.quantity)) || 0,
+        trackQuantity: Boolean(variant.trackQuantity ?? true),
         continueSellingWhenOutOfStock: Boolean(
-          variant.continueSellingWhenOutOfStock
+          variant.continueSellingWhenOutOfStock ?? false
         ),
-        requiresShipping: Boolean(variant.requiresShipping),
-        isTaxable: Boolean(variant.isTaxable),
+        requiresShipping: Boolean(variant.requiresShipping ?? true),
+        isTaxable: Boolean(variant.isTaxable ?? true),
         weight: cleanNumericField(variant.weight) || 0,
         weightUnit: variant.weightUnit || "kg",
         barcode: variant.barcode || "",
-        position: parseInt(variant.position) || 0,
-        isDefault: Boolean(variant.isDefault),
+        position: parseInt(String(variant.position)) || index,
+        isDefault: Boolean(variant.isDefault ?? index === 0),
         customFields: variant.customFields || {},
         option1: variant.option1 || "",
         option2: variant.option2 || "",
         option3: variant.option3 || "",
         images: Array.isArray(variant.images)
-          ? variant.images.map((img: any, index: number) => ({
-              fileId: img.fileId,
-              position: index,
-              isFeatured: index === 0,
+          ? variant.images.map((img: any, imgIndex: number) => ({
+              fileId: typeof img === "number" ? img : img.fileId,
+              position: imgIndex,
+              isFeatured: imgIndex === 0,
               alt: img.alt || "",
               caption: img.caption || "",
             }))
+          : Array.isArray(variant.imageIds)
+          ? variant.imageIds.map((fileId: number, imgIndex: number) => ({
+              fileId,
+              position: imgIndex,
+              isFeatured: imgIndex === 0,
+              alt: "",
+              caption: "",
+            }))
           : [],
       }));
+      data.hasVariants = true;
     } else {
       data.variants = [];
+      data.hasVariants = false;
     }
 
-    // Set hasVariants based on variants array
-    data.hasVariants = data.variants && data.variants.length > 0;
-
     // Ensure boolean fields are properly set
-    data.trackQuantity = Boolean(data.trackQuantity);
+    data.trackQuantity = Boolean(data.trackQuantity ?? true);
     data.continueSellingWhenOutOfStock = Boolean(
-      data.continueSellingWhenOutOfStock
+      data.continueSellingWhenOutOfStock ?? false
     );
-    data.requiresShipping = Boolean(data.requiresShipping);
-    data.isPhysicalProduct = Boolean(data.isPhysicalProduct);
-    data.isTaxable = Boolean(data.isTaxable);
+    data.requiresShipping = Boolean(data.requiresShipping ?? true);
+    data.isPhysicalProduct = Boolean(data.isPhysicalProduct ?? true);
+    data.isTaxable = Boolean(data.isTaxable ?? true);
 
     // Set default values for objects
     data.customFields = data.customFields || {};
@@ -435,8 +447,6 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       "entity:",
       entity
     );
-
-    // Use the same cleaning logic as create
     return productEntityConfig.onBeforeCreate!(data);
   },
   transformDataForForm: (product) => {
@@ -454,9 +464,19 @@ export const productEntityConfig: EntityManagerConfig<Product> = {
       compareAtPrice: product.compareAtPrice || "",
       costPerItem: product.costPerItem || "",
       weight: product.weight || 0,
+      quantity: product.quantity || 0,
       // Ensure enum fields are proper integers for select fields
       status: product.status !== undefined ? product.status : 0,
       type: product.type !== undefined ? product.type : 0,
+      // Ensure boolean fields
+      trackQuantity: Boolean(product.trackQuantity),
+      continueSellingWhenOutOfStock: Boolean(
+        product.continueSellingWhenOutOfStock
+      ),
+      requiresShipping: Boolean(product.requiresShipping),
+      isPhysicalProduct: Boolean(product.isPhysicalProduct),
+      isTaxable: Boolean(product.isTaxable),
+      hasVariants: Boolean(product.hasVariants),
     };
 
     console.log("[ProductConfig] transformDataForForm returning:", transformed);

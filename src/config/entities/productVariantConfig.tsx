@@ -113,13 +113,23 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
     },
   ],
   formFields: [
+    // Basic variant information
     createTextField("title", "Variant Title", {
       required: true,
       validation: { required: "Variant title is required" },
+      description: "Descriptive name for this variant",
     }),
     createTextField("sku", "SKU", {
       required: true,
       validation: { required: "SKU is required" },
+      description: "Unique identifier for this variant",
+    }),
+
+    // Product ID field for standalone variant creation
+    createNumberField("productId", "Product ID", {
+      required: true,
+      validation: { required: "Product ID is required" },
+      description: "ID of the product this variant belongs to",
     }),
 
     // Variant Images
@@ -130,6 +140,7 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
       description: "Select images for this variant",
     } as FormField,
 
+    // Pricing
     createNumberField("price", "Price", {
       required: true,
       min: 0,
@@ -139,17 +150,26 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
     createNumberField("compareAtPrice", "Compare at Price", {
       min: 0,
       step: 0.01,
+      description: "Original price for showing discounts",
     }),
     createNumberField("costPerItem", "Cost per Item", {
       min: 0,
       step: 0.01,
+      description: "Cost to acquire or produce this variant",
     }),
-    createNumberField("quantity", "Quantity", { min: 0 }),
+
+    // Inventory
+    createNumberField("quantity", "Quantity", {
+      min: 0,
+      description: "Available stock for this variant",
+    }),
     createCheckboxField("trackQuantity", "Track Quantity"),
     createCheckboxField(
       "continueSellingWhenOutOfStock",
       "Continue selling when out of stock"
     ),
+
+    // Shipping
     createCheckboxField("requiresShipping", "Requires Shipping"),
     createCheckboxField("isTaxable", "Taxable"),
     createNumberField("weight", "Weight", { min: 0, step: 0.01 }),
@@ -159,14 +179,28 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
       { value: "lb", label: "Pounds" },
       { value: "oz", label: "Ounces" },
     ]),
+
+    // Additional details
     createTextField("barcode", "Barcode"),
-    createNumberField("position", "Position", { min: 0 }),
-    createCheckboxField("isDefault", "Default Variant"),
+    createNumberField("position", "Position", {
+      min: 0,
+      description: "Display order for this variant",
+    }),
+    createCheckboxField("isDefault", "Default Variant", {
+      description: "Make this the default variant for the product",
+    }),
+
+    // Variant options
     createTextField("option1", "Option 1", {
       description: "e.g., Size, Color, Material",
+      placeholder: "e.g., Size",
     }),
-    createTextField("option2", "Option 2"),
-    createTextField("option3", "Option 3"),
+    createTextField("option2", "Option 2", {
+      placeholder: "e.g., Color",
+    }),
+    createTextField("option3", "Option 3", {
+      placeholder: "e.g., Material",
+    }),
   ] as FormField[],
   customFormRender: (field, value, onChange, errors) => {
     if (field.name === "imageIds") {
@@ -198,16 +232,18 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
     return null;
   },
   onBeforeCreate: (data) => {
+    console.log("[VariantConfig] onBeforeCreate called with data:", data);
+
     // Clean and validate numeric fields
-    const cleanNumericField = (value: any): number | null => {
+    const cleanNumericField = (value: any): number | undefined => {
       if (value === "" || value === null || value === undefined) {
-        return null;
+        return undefined;
       }
       const parsed = parseFloat(value);
-      return isNaN(parsed) ? null : parsed;
+      return isNaN(parsed) ? undefined : parsed;
     };
 
-    // Clean up fields
+    // Clean up string fields
     data.title = data.title || "";
     data.sku = data.sku || "";
     data.barcode = data.barcode || "";
@@ -217,6 +253,7 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
     data.weightUnit = data.weightUnit || "kg";
 
     // Handle numeric fields
+    data.productId = parseInt(String(data.productId)) || undefined;
     data.price = cleanNumericField(data.price) || 0;
     data.compareAtPrice = cleanNumericField(data.compareAtPrice);
     data.costPerItem = cleanNumericField(data.costPerItem);
@@ -225,13 +262,13 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
     data.position = parseInt(String(data.position)) || 0;
 
     // Handle boolean fields
-    data.trackQuantity = Boolean(data.trackQuantity);
+    data.trackQuantity = Boolean(data.trackQuantity ?? true);
     data.continueSellingWhenOutOfStock = Boolean(
-      data.continueSellingWhenOutOfStock
+      data.continueSellingWhenOutOfStock ?? false
     );
-    data.requiresShipping = Boolean(data.requiresShipping);
-    data.isTaxable = Boolean(data.isTaxable);
-    data.isDefault = Boolean(data.isDefault);
+    data.requiresShipping = Boolean(data.requiresShipping ?? true);
+    data.isTaxable = Boolean(data.isTaxable ?? true);
+    data.isDefault = Boolean(data.isDefault ?? false);
 
     // Transform imageIds to images array
     if (data.imageIds && Array.isArray(data.imageIds)) {
@@ -250,15 +287,33 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
     // Set default values
     data.customFields = data.customFields || {};
 
+    console.log("[VariantConfig] onBeforeCreate returning cleaned data:", data);
     return data;
   },
   onBeforeUpdate: (data, entity) => {
-    // Use the same cleaning logic as create
+    console.log(
+      "[VariantConfig] onBeforeUpdate called with data:",
+      data,
+      "entity:",
+      entity
+    );
+
+    // Preserve the productId from the entity
+    if (entity && entity.productId) {
+      data.productId = entity.productId;
+    }
+
     return productVariantEntityConfig.onBeforeCreate!(data);
   },
   transformDataForForm: (variant) => {
+    console.log(
+      "[VariantConfig] transformDataForForm called with variant:",
+      variant
+    );
+
     const transformed = {
       ...variant,
+      productId: variant.productId || undefined,
       imageIds: variant.images?.map((img) => img.fileId) || [],
       // Ensure proper form values
       compareAtPrice: variant.compareAtPrice || "",
@@ -279,6 +334,8 @@ export const productVariantEntityConfig: EntityManagerConfig<ProductVariant> = {
       option3: variant.option3 || "",
       weightUnit: variant.weightUnit || "kg",
     };
+
+    console.log("[VariantConfig] transformDataForForm returning:", transformed);
     return transformed;
   },
 };

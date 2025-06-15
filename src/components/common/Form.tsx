@@ -49,17 +49,42 @@ const Form: React.FC<FormProps> = ({
   // Watch all form data for custom field renderer
   const formData = watch();
 
-  // Add useEffect to handle defaultValues changes
+  // Add useEffect to handle defaultValues changes - improved to handle deep updates
   useEffect(() => {
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       console.log("[Form] Resetting form with default values:", defaultValues);
-      reset(defaultValues);
+
+      // Create a clean version of defaultValues to ensure proper form reset
+      const cleanDefaults = { ...defaultValues };
+
+      // Handle array fields (like imageIds) properly
+      Object.keys(cleanDefaults).forEach((key) => {
+        const value = cleanDefaults[key];
+        if (Array.isArray(value)) {
+          cleanDefaults[key] = [...value];
+        } else if (value === null || value === undefined) {
+          cleanDefaults[key] = "";
+        }
+      });
+
+      reset(cleanDefaults);
     }
   }, [defaultValues, reset]);
 
   const handleFormSubmit = (data: any) => {
     console.log("[Form] Form submitted with data:", data);
-    onSubmit(data);
+
+    // Clean up the data before submission
+    const cleanedData = { ...data };
+
+    // Handle empty strings and null values
+    Object.keys(cleanedData).forEach((key) => {
+      if (cleanedData[key] === "" && typeof defaultValues[key] === "number") {
+        cleanedData[key] = 0;
+      }
+    });
+
+    onSubmit(cleanedData);
   };
 
   const handleCancel = () => {
@@ -123,7 +148,7 @@ const Form: React.FC<FormProps> = ({
               return (
                 <select
                   {...fieldProps}
-                  value={value || ""}
+                  value={value !== undefined && value !== null ? value : ""}
                   onChange={onChange}
                   disabled={field.disabled}
                   multiple={field.multiple}
@@ -144,7 +169,7 @@ const Form: React.FC<FormProps> = ({
                   <input
                     {...fieldProps}
                     type="checkbox"
-                    checked={value || false}
+                    checked={Boolean(value)}
                     onChange={(e) => onChange(e.target.checked)}
                     disabled={field.disabled}
                     className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
@@ -178,10 +203,20 @@ const Form: React.FC<FormProps> = ({
                 <input
                   {...fieldProps}
                   type="number"
-                  value={value || ""}
-                  onChange={(e) =>
-                    onChange(e.target.valueAsNumber || e.target.value)
+                  value={
+                    value !== undefined && value !== null && value !== ""
+                      ? value
+                      : ""
                   }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "") {
+                      onChange("");
+                    } else {
+                      const numVal = e.target.valueAsNumber;
+                      onChange(isNaN(numVal) ? val : numVal);
+                    }
+                  }}
                   placeholder={field.placeholder}
                   min={field.min}
                   max={field.max}

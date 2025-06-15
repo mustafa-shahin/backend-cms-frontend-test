@@ -51,6 +51,7 @@ interface ProductVariant {
   isAvailable: boolean;
   discountPercentage?: number;
   displayTitle: string;
+  imageIds?: number[]; // For form handling
 }
 
 interface CreateProductVariant {
@@ -74,6 +75,38 @@ interface CreateProductVariant {
   option2?: string;
   option3?: string;
   imageIds: number[];
+  images?: any[];
+}
+
+// API payload type with optional imageIds for delete operation
+interface ApiVariantPayload {
+  title: string;
+  sku: string;
+  price: number;
+  compareAtPrice?: number;
+  costPerItem?: number;
+  quantity: number;
+  trackQuantity: boolean;
+  continueSellingWhenOutOfStock: boolean;
+  requiresShipping: boolean;
+  isTaxable: boolean;
+  weight: number;
+  weightUnit?: string;
+  barcode?: string;
+  position: number;
+  isDefault: boolean;
+  customFields: Record<string, any>;
+  option1?: string;
+  option2?: string;
+  option3?: string;
+  imageIds?: number[]; // Optional for delete operation
+  images: Array<{
+    fileId: number;
+    position: number;
+    isFeatured: boolean;
+    alt: string;
+    caption: string;
+  }>;
 }
 
 interface ProductVariantManagerProps {
@@ -174,7 +207,8 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
       option1: variant.option1 || "",
       option2: variant.option2 || "",
       option3: variant.option3 || "",
-      imageIds: variant.images?.map((img) => img.fileId) || [],
+      imageIds:
+        variant.imageIds || variant.images?.map((img) => img.fileId) || [],
     });
     setIsModalOpen(true);
   };
@@ -185,14 +219,23 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     }
 
     try {
-      if (productId && variantId > 0) {
-        // If we have a real product ID and variant ID, delete from API
+      // Always try to delete from API if it's a real variant ID (positive number)
+      if (variantId > 0) {
         await apiService.delete(`/productvariant/${variantId}`);
         toast.success("Variant deleted successfully");
       }
 
-      // Update local state
+      // Update local state regardless
       const updatedVariants = variants.filter((v) => v.id !== variantId);
+
+      // If we deleted the default variant, make the first remaining one default
+      if (
+        updatedVariants.length > 0 &&
+        !updatedVariants.some((v) => v.isDefault)
+      ) {
+        updatedVariants[0].isDefault = true;
+      }
+
       onVariantsChange(updatedVariants);
     } catch (error) {
       console.error("Error deleting variant:", error);
@@ -215,111 +258,116 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
 
       // Prepare the variant data
       const variantData = {
-        ...formData,
+        title: formData.title || "",
+        sku: formData.sku || "",
         price: cleanNumericField(formData.price) || 0,
         compareAtPrice: cleanNumericField(formData.compareAtPrice),
         costPerItem: cleanNumericField(formData.costPerItem),
         weight: cleanNumericField(formData.weight) || 0,
         quantity: parseInt(String(formData.quantity)) || 0,
-        images: formData.imageIds.map((fileId, index) => ({
-          fileId,
-          position: index,
-          isFeatured: index === 0,
-          alt: "",
-          caption: "",
-        })),
+        trackQuantity: Boolean(formData.trackQuantity),
+        continueSellingWhenOutOfStock: Boolean(
+          formData.continueSellingWhenOutOfStock
+        ),
+        requiresShipping: Boolean(formData.requiresShipping),
+        isTaxable: Boolean(formData.isTaxable),
+        weightUnit: formData.weightUnit || "kg",
+        barcode: formData.barcode || "",
+        position: parseInt(String(formData.position)) || variants.length,
+        isDefault: Boolean(formData.isDefault),
+        customFields: formData.customFields || {},
+        option1: formData.option1 || "",
+        option2: formData.option2 || "",
+        option3: formData.option3 || "",
+        imageIds: formData.imageIds || [],
       };
 
       let updatedVariant: ProductVariant;
 
-      if (editingVariant && editingVariant.id > 0 && productId) {
-        // Update existing variant via API
-        updatedVariant = await apiService.put<ProductVariant>(
-          `/productvariant/${editingVariant.id}`,
-          variantData
-        );
-        toast.success("Variant updated successfully");
-      } else if (productId) {
-        // Create new variant via API
-        updatedVariant = await apiService.post<ProductVariant>(
-          `/product/${productId}/variant`,
-          variantData
-        );
-        toast.success("Variant created successfully");
-      } else {
-        // For new products, create a local variant object
-        updatedVariant = {
-          id: editingVariant?.id || -Date.now(), // Negative ID for local variants
-          productId: productId || 0,
-          title: variantData.title,
-          sku: variantData.sku,
-          price: variantData.price,
-          compareAtPrice: variantData.compareAtPrice,
-          costPerItem: variantData.costPerItem,
-          quantity: variantData.quantity,
-          trackQuantity: variantData.trackQuantity,
-          continueSellingWhenOutOfStock:
-            variantData.continueSellingWhenOutOfStock,
-          requiresShipping: variantData.requiresShipping,
-          isTaxable: variantData.isTaxable,
-          weight: variantData.weight,
-          weightUnit: variantData.weightUnit,
-          barcode: variantData.barcode,
-          position: variantData.position,
-          isDefault: variantData.isDefault,
-          customFields: variantData.customFields,
-          option1: variantData.option1,
-          option2: variantData.option2,
-          option3: variantData.option3,
-          createdAt: editingVariant?.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          images: variantData.images.map((img: any, index: number) => ({
-            id: editingVariant?.images?.[index]?.id || -(Date.now() + index),
-            productVariantId: editingVariant?.id || -Date.now(),
-            fileId: img.fileId,
-            alt: img.alt || "",
-            caption: img.caption || "",
+      // For existing variants with positive IDs, update via API
+      if (editingVariant && editingVariant.id > 0) {
+        const apiPayload: ApiVariantPayload = {
+          ...variantData,
+          images: variantData.imageIds.map((fileId, index) => ({
+            fileId,
             position: index,
             isFeatured: index === 0,
-            imageUrl: apiService.getImageUrl(img.fileId, "download") || "",
-            thumbnailUrl: apiService.getImageUrl(img.fileId, "thumbnail") || "",
-            createdAt: editingVariant?.createdAt || new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            alt: "",
+            caption: "",
           })),
-          isAvailable:
-            variantData.quantity > 0 ||
-            variantData.continueSellingWhenOutOfStock,
-          discountPercentage: variantData.compareAtPrice
-            ? Math.round(
-                ((variantData.compareAtPrice - variantData.price) /
-                  variantData.compareAtPrice) *
-                  100
-              )
-            : undefined,
-          displayTitle: variantData.title || generateDisplayTitle(variantData),
-          featuredImageUrl:
-            apiService.getFeaturedImageUrl(
-              variantData.images.map((img: any, index: number) => ({
-                fileId: img.fileId,
-                isFeatured: index === 0,
-                position: index,
-              }))
-            ) || undefined,
         };
+        delete apiPayload.imageIds;
+
+        updatedVariant = await apiService.put<ProductVariant>(
+          `/productvariant/${editingVariant.id}`,
+          apiPayload
+        );
+        toast.success("Variant updated successfully");
+      }
+      // For new variants, create via API if productId is available
+      else if (!editingVariant && productId && productId > 0) {
+        const apiPayload: ApiVariantPayload = {
+          ...variantData,
+          images: variantData.imageIds.map((fileId, index) => ({
+            fileId,
+            position: index,
+            isFeatured: index === 0,
+            alt: "",
+            caption: "",
+          })),
+        };
+        delete apiPayload.imageIds;
+
+        updatedVariant = await apiService.post<ProductVariant>(
+          `/product/${productId}/variant`,
+          apiPayload
+        );
+        toast.success("Variant created successfully");
+      }
+      // For new products without productId, create using standalone variant API
+      else {
+        // Generate a temporary SKU if none provided
+        const tempSku = variantData.sku || `TEMP-${Date.now()}`;
+
+        const apiPayload: ApiVariantPayload = {
+          ...variantData,
+          sku: tempSku,
+          images: variantData.imageIds.map((fileId, index) => ({
+            fileId,
+            position: index,
+            isFeatured: index === 0,
+            alt: "",
+            caption: "",
+          })),
+        };
+        delete apiPayload.imageIds;
+
+        // Use standalone variant creation endpoint
+        updatedVariant = await apiService.post<ProductVariant>(
+          "/productvariant",
+          {
+            ...apiPayload,
+            productId: productId || null, // Allow null productId for standalone creation
+          }
+        );
+        toast.success("Variant created successfully");
       }
 
       // Update local state
       let updatedVariants = [...variants];
+
       if (editingVariant) {
+        // Update existing variant
         updatedVariants = updatedVariants.map((v) =>
           v.id === editingVariant.id ? updatedVariant : v
         );
       } else {
+        // Add new variant
         updatedVariants.push(updatedVariant);
       }
 
-      // If this is the first variant or marked as default, make it default
-      if (variants.length === 0 || formData.isDefault) {
+      // Handle default variant logic
+      if (formData.isDefault || updatedVariants.length === 1) {
         updatedVariants = updatedVariants.map((v) => ({
           ...v,
           isDefault: v.id === updatedVariant.id,
@@ -347,12 +395,12 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
 
   const setDefaultVariant = async (variantId: number) => {
     try {
-      if (productId && variantId > 0) {
-        // If we have a real product ID and variant ID, update via API
+      // Only call API if we have a positive variant ID
+      if (variantId > 0) {
         await apiService.put(`/productvariant/${variantId}/set-default`, {});
       }
 
-      // Update local state
+      // Update local state regardless
       const updatedVariants = variants.map((v) => ({
         ...v,
         isDefault: v.id === variantId,
@@ -366,9 +414,11 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
   };
 
   const renderVariantCard = (variant: ProductVariant) => {
-    const featuredImageUrl = apiService.getFeaturedImageUrl(
-      variant.images || []
-    );
+    const featuredImageUrl =
+      apiService.getFeaturedImageUrl(variant.images || []) ||
+      (variant.imageIds && variant.imageIds.length > 0
+        ? apiService.getImageUrl(variant.imageIds[0], "download")
+        : undefined); // Changed from null to undefined to fix TypeScript error
 
     return (
       <div
@@ -384,7 +434,14 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
           <div className="flex-1">
             <div className="flex items-center space-x-2">
               <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                {variant.displayTitle}
+                {variant.displayTitle ||
+                  variant.title ||
+                  generateDisplayTitle({
+                    title: variant.title,
+                    option1: variant.option1,
+                    option2: variant.option2,
+                    option3: variant.option3,
+                  } as CreateProductVariant)}
               </h4>
               {variant.isDefault && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
@@ -425,7 +482,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
           <div className="mb-3">
             <img
               src={featuredImageUrl}
-              alt={variant.displayTitle}
+              alt={variant.displayTitle || variant.title}
               className="w-full h-20 object-cover rounded"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
