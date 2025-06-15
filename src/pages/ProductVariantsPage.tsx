@@ -1,6 +1,6 @@
 import React from "react";
 import EntityManager from "../components/entities/EntityManager";
-import { ProductVariant } from "../types/Product";
+import { ProductVariant } from "../types/ProductVariant";
 import { productVariantEntityConfig } from "../config/EntityConfig";
 
 const ProductVariantsPage: React.FC = () => {
