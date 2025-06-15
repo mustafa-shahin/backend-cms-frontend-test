@@ -1,6 +1,12 @@
 import { BaseEntity } from "./api";
+import { Category } from "./Category";
 import { ProductStatus, ProductType } from "./enums";
 import { FileEntity } from "./FileEntity";
+import {
+  CreateProductVariant,
+  ProductVariant,
+  UpdateProductVariant,
+} from "./ProductVariant";
 
 export interface ProductImage extends BaseEntity {
   productId: number;
@@ -23,35 +29,6 @@ export interface CreateProductImage {
 }
 
 export interface UpdateProductImage {
-  id: number;
-  fileId: number;
-  alt?: string;
-  caption?: string;
-  position: number;
-  isFeatured: boolean;
-}
-
-export interface ProductVariantImage extends BaseEntity {
-  productVariantId: number;
-  fileId: number;
-  file?: FileEntity;
-  alt?: string;
-  caption?: string;
-  position: number;
-  isFeatured: boolean;
-  imageUrl: string;
-  thumbnailUrl?: string;
-}
-
-export interface CreateProductVariantImage {
-  fileId: number;
-  alt?: string;
-  caption?: string;
-  position: number;
-  isFeatured: boolean;
-}
-
-export interface UpdateProductVariantImage {
   id: number;
   fileId: number;
   alt?: string;
@@ -95,82 +72,6 @@ export interface UpdateProductOptionValue {
   id: number;
   value: string;
   position: number;
-}
-
-export interface ProductVariant extends BaseEntity {
-  productId: number;
-  title: string;
-  sku: string;
-  price: number;
-  compareAtPrice?: number;
-  costPerItem?: number;
-  quantity: number;
-  trackQuantity: boolean;
-  continueSellingWhenOutOfStock: boolean;
-  requiresShipping: boolean;
-  isTaxable: boolean;
-  weight: number;
-  weightUnit?: string;
-  barcode?: string;
-  position: number;
-  isDefault: boolean;
-  customFields: Record<string, any>;
-  option1?: string;
-  option2?: string;
-  option3?: string;
-  images: ProductVariantImage[];
-  featuredImageUrl?: string;
-  // Computed properties
-  isAvailable: boolean;
-  discountPercentage?: number;
-  displayTitle: string;
-}
-
-export interface CreateProductVariant {
-  title: string;
-  sku: string;
-  price: number;
-  compareAtPrice?: number;
-  costPerItem?: number;
-  quantity: number;
-  trackQuantity: boolean;
-  continueSellingWhenOutOfStock: boolean;
-  requiresShipping: boolean;
-  isTaxable: boolean;
-  weight: number;
-  weightUnit?: string;
-  barcode?: string;
-  position: number;
-  isDefault: boolean;
-  customFields: Record<string, any>;
-  option1?: string;
-  option2?: string;
-  option3?: string;
-  images: CreateProductVariantImage[];
-}
-
-export interface UpdateProductVariant {
-  id: number;
-  title: string;
-  sku: string;
-  price: number;
-  compareAtPrice?: number;
-  costPerItem?: number;
-  quantity: number;
-  trackQuantity: boolean;
-  continueSellingWhenOutOfStock: boolean;
-  requiresShipping: boolean;
-  isTaxable: boolean;
-  weight: number;
-  weightUnit?: string;
-  barcode?: string;
-  position: number;
-  isDefault: boolean;
-  customFields: Record<string, any>;
-  option1?: string;
-  option2?: string;
-  option3?: string;
-  images: UpdateProductVariantImage[];
 }
 
 export interface Product extends BaseEntity {
@@ -286,84 +187,4 @@ export interface UpdateProduct {
   images: UpdateProductImage[];
   options: UpdateProductOption[];
   variants: UpdateProductVariant[];
-}
-export interface CategoryImage extends BaseEntity {
-  categoryId: number;
-  fileId: number;
-  file?: FileEntity;
-  alt?: string;
-  caption?: string;
-  position: number;
-  isFeatured: boolean;
-  imageUrl: string;
-  thumbnailUrl?: string;
-}
-
-export interface CreateCategoryImage {
-  fileId: number;
-  alt?: string;
-  caption?: string;
-  position: number;
-  isFeatured: boolean;
-}
-
-export interface UpdateCategoryImage {
-  id: number;
-  fileId: number;
-  alt?: string;
-  caption?: string;
-  position: number;
-  isFeatured: boolean;
-}
-
-export interface Category extends BaseEntity {
-  name: string;
-  slug: string;
-  description?: string;
-  shortDescription?: string;
-  parentCategoryId?: number;
-  parentCategoryName?: string;
-  subCategories: Category[];
-  isActive: boolean;
-  isVisible: boolean;
-  sortOrder: number;
-  metaTitle?: string;
-  metaDescription?: string;
-  metaKeywords?: string;
-  customFields: Record<string, any>;
-  productCount: number;
-  images: CategoryImage[];
-  featuredImageUrl?: string;
-}
-
-export interface CreateCategory {
-  name: string;
-  slug: string;
-  description?: string;
-  shortDescription?: string;
-  parentCategoryId?: number;
-  isActive: boolean;
-  isVisible: boolean;
-  sortOrder: number;
-  metaTitle?: string;
-  metaDescription?: string;
-  metaKeywords?: string;
-  customFields: Record<string, any>;
-  images: CreateCategoryImage[];
-}
-
-export interface UpdateCategory {
-  name: string;
-  slug: string;
-  description?: string;
-  shortDescription?: string;
-  parentCategoryId?: number;
-  isActive: boolean;
-  isVisible: boolean;
-  sortOrder: number;
-  metaTitle?: string;
-  metaDescription?: string;
-  metaKeywords?: string;
-  customFields: Record<string, any>;
-  images: UpdateCategoryImage[];
 }

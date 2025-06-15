@@ -53,13 +53,6 @@ export type {
   Product,
   CreateProduct,
   UpdateProduct,
-  ProductVariant,
-  CreateProductVariant,
-  UpdateProductVariant,
-  Category,
-  CreateCategory,
-  UpdateCategory,
-  ProductImage,
   CreateProductImage,
   ProductOption,
   CreateProductOption,
@@ -67,6 +60,13 @@ export type {
   CreateProductOptionValue,
 } from "./Product";
 
+export type {
+  ProductVariant,
+  CreateProductVariant,
+  UpdateProductVariant,
+} from "./ProductVariant";
+
+export type { Category, CreateCategory, UpdateCategory } from "./Category";
 export type {
   LoginRequest,
   LoginResponse,
